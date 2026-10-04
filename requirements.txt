@@ -1,0 +1,5 @@
+fastapi>=0.142
+uvicorn>=0.54
+sqlalchemy>=2.1
+pydantic>=2.13
+rdkit>=2026.3
