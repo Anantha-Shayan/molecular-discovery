@@ -1,35 +1,157 @@
 from __future__ import annotations
 
-import os
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Response, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
-from . import models, pipeline, schemas, services
-from .database import get_session, init_db
+from . import models, pipeline, schemas, services, storage
+from .config import settings
+from .database import check_connection, get_session, init_db
+from .logging_config import configure_logging, get_logger
 from .stages import depiction
 from .targets import service as target_service
 
+configure_logging()
+log = get_logger("api")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    init_db()
+    init_db()  # no-op on PostgreSQL: Alembic owns the schema there
+    log.info(
+        "starting",
+        extra={"status": f"env={settings.app_env} db={settings.safe_database_url}"},
+    )
+    # Pipelines run inside this process, so a restart abandons any run that
+    # was in flight. Mark those failed rather than leaving them "running"
+    # forever. Safe because exactly one app process is supported (see
+    # docs/DEPLOYMENT.md). Never fatal: /ready reports DB problems.
+    try:
+        interrupted = pipeline.fail_interrupted_jobs()
+        if interrupted:
+            log.warning("marked %d interrupted job(s) as failed", interrupted)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("could not check for interrupted jobs: %s", exc.__class__.__name__)
     yield
 
 
-app = FastAPI(title="Molecular Discovery Platform — Integration MVP", lifespan=lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # MVP only — would be locked down in production
-    allow_methods=["*"],
-    allow_headers=["*"],
+_docs = settings.enable_api_docs
+app = FastAPI(
+    title="Molecular Discovery Platform — Integration MVP",
+    lifespan=lifespan,
+    docs_url="/docs" if _docs else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if _docs else None,
 )
 
-FRONTEND_DIR = os.path.join(target_service.REPO_ROOT, "frontend")
+# The UI is served by this app (same origin), so CORS is only needed when a
+# separate origin must call the API. With CORS_ORIGINS unset, no CORS
+# headers are sent at all.
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.cors_origins),
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
+
+# Slack allowed on top of the file limit for multipart framing.
+_UPLOAD_OVERHEAD_BYTES = 1024 * 1024
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    # Reject oversized uploads from the Content-Length header before the
+    # body is read at all.
+    if request.method == "POST" and request.url.path == "/api/targets/upload":
+        declared = request.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > settings.max_upload_bytes + _UPLOAD_OVERHEAD_BYTES:
+            return JSONResponse(
+                status_code=413,
+                content={"detail": {
+                    "message": f"File exceeds the {settings.max_upload_mb} MB upload limit.",
+                    "checks": [],
+                }},
+            )
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    return response
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception(request: Request, exc: Exception):
+    """Last-resort handler: log the traceback server-side, never send it out.
+
+    The response carries only a request ID that can be matched to the log
+    line. Internal exception text (which for database errors can include
+    SQL, parameters and paths) is shown only when APP_ENV=development.
+    """
+    request_id = uuid.uuid4().hex[:12]
+    log.error(
+        "unhandled error on %s %s", request.method, request.url.path,
+        exc_info=exc, extra={"request_id": request_id},
+    )
+    body = {"detail": "Internal server error", "request_id": request_id}
+    if settings.expose_error_detail:
+        body["error"] = f"{exc.__class__.__name__}: {exc}"
+    return JSONResponse(status_code=500, content=body)
+
+
+# ---------------------------------------------------------------------------
+# Operational endpoints
+# ---------------------------------------------------------------------------
+@app.get("/health", include_in_schema=False)
+def health():
+    """Liveness: the process is up and serving. Touches nothing external."""
+    return {"status": "ok"}
+
+
+@app.get("/ready", include_in_schema=False)
+def ready():
+    """Readiness: the dependencies a request actually needs are available.
+
+    Returns 503 until PostgreSQL answers and its schema is at the newest
+    migration this build ships, so an orchestrator won't route traffic to
+    an instance that would only return errors.
+    """
+    checks: dict[str, str] = {}
+
+    try:
+        check_connection()
+        checks["database"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        log.warning("readiness: database unavailable (%s)", exc.__class__.__name__)
+        checks["database"] = "unavailable"
+
+    if checks["database"] == "ok" and not settings.is_sqlite:
+        try:
+            from . import migrations
+
+            checks["schema"] = "current" if migrations.schema_is_current() else "outdated"
+        except Exception as exc:  # noqa: BLE001
+            log.warning("readiness: schema check failed (%s)", exc.__class__.__name__)
+            checks["schema"] = "unknown"
+
+    checks["data_dir"] = "writable" if storage.is_writable() else "not writable"
+    checks["demo_fixture"] = (
+        "present" if target_service.demo_fixture_path().exists() else "missing"
+    )
+
+    good = {"ok", "current", "writable", "present"}
+    is_ready = all(value in good for value in checks.values())
+    return JSONResponse(
+        status_code=200 if is_ready else 503,
+        content={"status": "ready" if is_ready else "not ready", "checks": checks},
+    )
+
 
 STAGE_INDEX = {None: 0, "screening": 1, "sa": 2, "admet": 3, "affinity": 4, "kinetics": 5}
 STAGE_META = {
@@ -146,9 +268,31 @@ def _skipped_stages(config: dict) -> set[str]:
 # ---------------------------------------------------------------------------
 # Target intake
 # ---------------------------------------------------------------------------
+async def _read_limited(file: UploadFile) -> bytes:
+    """Read an upload in chunks, aborting as soon as it exceeds the limit."""
+    limit = settings.max_upload_bytes
+    chunks: list[bytes] = []
+    size = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        size += len(chunk)
+        if size > limit:
+            raise HTTPException(
+                status_code=413,
+                detail={
+                    "message": f"File exceeds the {settings.max_upload_mb} MB upload limit.",
+                    "checks": [],
+                },
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @app.post("/api/targets/upload", response_model=schemas.TargetResponse, status_code=201)
 async def upload_target(file: UploadFile = File(...), name: str | None = None):
-    raw = await file.read()
+    raw = await _read_limited(file)
     with get_session() as session:
         try:
             target = target_service.create_target(
@@ -415,7 +559,9 @@ def list_candidates(job_id: str):
     with get_session() as session:
         _job_or_404(session, job_id)
         molecules = session.execute(
-            select(models.Molecule).where(models.Molecule.job_id == job_id)
+            select(models.Molecule)
+            .where(models.Molecule.job_id == job_id)
+            .order_by(models.Molecule.display_id)
         ).scalars().all()
 
         rows: list[schemas.CandidateRow] = []
@@ -451,7 +597,8 @@ def list_candidates(job_id: str):
                 )
             )
 
-        rows.sort(key=lambda r: r.residence_time_min, reverse=True)
+        # display_id breaks ties so ranking is deterministic on any database.
+        rows.sort(key=lambda r: (-r.residence_time_min, r.display_id))
         for i, row in enumerate(rows, start=1):
             row.rank = i
 
@@ -464,7 +611,9 @@ def export_job_sdf(job_id: str):
     with get_session() as session:
         _job_or_404(session, job_id)
         molecules = session.execute(
-            select(models.Molecule).where(models.Molecule.job_id == job_id)
+            select(models.Molecule)
+            .where(models.Molecule.job_id == job_id)
+            .order_by(models.Molecule.display_id)
         ).scalars().all()
 
         records = []
@@ -572,11 +721,11 @@ def index():
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
-    path = os.path.join(FRONTEND_DIR, "favicon.ico")
-    if os.path.exists(path):
+    path = settings.frontend_dir / "favicon.ico"
+    if path.exists():
         return FileResponse(path)
     return Response(status_code=204)
 
 
-if os.path.isdir(FRONTEND_DIR):
-    app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+if settings.frontend_dir.is_dir():
+    app.mount("/app", StaticFiles(directory=settings.frontend_dir, html=True), name="frontend")

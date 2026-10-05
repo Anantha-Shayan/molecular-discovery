@@ -21,20 +21,25 @@ that actually demonstrates engineering judgment:
 """
 from __future__ import annotations
 
-import datetime as dt
 import json
-import os
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import models
+from . import models, storage
+from .config import settings
+from .database import get_session
+from .logging_config import get_logger
 from .models import _now
 from .services import TargetContext, admet_service, affinity_service
 from .services.engines import pace
 from .services import kinetics_service, sa_service, screening_service
 from .stages import depiction
 from .targets import service as target_service
+
+log = get_logger("pipeline")
+
+TERMINAL_STATUSES = ("COMPLETE", "FAILED")
 
 STAGE_SEQUENCE = ["screening", "sa", "admet", "affinity", "kinetics"]
 
@@ -88,6 +93,11 @@ def _log_stage(
     session.flush()
     if status in ("SUCCEEDED", "FAILED", "SKIPPED"):
         session.commit()
+    log.log(
+        40 if status == "FAILED" else 20,  # ERROR / INFO
+        "%s %s%s", stage, status, f": {detail}" if detail else "",
+        extra={"job_id": job_id, "stage": stage, "status": status},
+    )
     return entry
 
 
@@ -126,12 +136,6 @@ def classify_status(sa_score: float, admet_profile: str, residence_min: float) -
 # ---------------------------------------------------------------------------
 # Artifacts
 # ---------------------------------------------------------------------------
-def _run_dir(job_id: str, *parts: str) -> str:
-    path = os.path.join(target_service.DATA_DIR, "runs", job_id, *parts)
-    os.makedirs(path, exist_ok=True)
-    return path
-
-
 def _write_artifact(
     session: Session,
     job_id: str,
@@ -140,15 +144,20 @@ def _write_artifact(
     filename: str,
     content: str,
 ) -> str:
-    directory = _run_dir(job_id, stage)
-    path = os.path.join(directory, filename)
-    with open(path, "w", encoding="utf-8") as handle:
-        handle.write(content)
+    """Write a run artifact under DATA_DIR/runs/<job>/<stage>/ and record it.
+
+    The Artifact row stores the path relative to DATA_DIR (see storage.py),
+    so it stays valid if the data volume moves.
+    """
+    directory = storage.ensure_dir("runs", job_id, stage)
+    path = directory / filename
+    path.write_text(content, encoding="utf-8")
+    stored = storage.to_stored(path)
     session.add(
-        models.Artifact(job_id=job_id, stage=stage, kind=kind, storage_path=path)
+        models.Artifact(job_id=job_id, stage=stage, kind=kind, storage_path=stored)
     )
     session.flush()
-    return path
+    return stored
 
 
 def _stage_delay(job_params: dict) -> float | None:
@@ -204,7 +213,7 @@ def run_pipeline(session: Session, job_id: str) -> None:
             _log_stage(
                 session, job_id, "target", "SUCCEEDED",
                 f"{target.name} ({target.pdb_id or 'uploaded'}) chain "
-                f"{target.selected_chain or '-'} staged to {os.path.relpath(staged_path, target_service.REPO_ROOT)}",
+                f"{target.selected_chain or '-'} staged to {staged_path}",
             )
         else:
             _log_stage(
@@ -265,7 +274,14 @@ def run_pipeline(session: Session, job_id: str) -> None:
         survivors: list[models.Molecule] = []
         sa_payloads: dict[str, dict] = {}
         for molecule in molecules:
-            result = sa_service.run(context, molecule.smiles)
+            try:
+                result = sa_service.run(context, molecule.smiles)
+            except Exception:
+                log.error(
+                    "SA scoring failed",
+                    extra={"job_id": job_id, "stage": "sa", "molecule_id": molecule.id},
+                )
+                raise
             passed = result["sa_score"] <= threshold
             result = {**result, "passed": passed, "threshold": threshold}
             sa_payloads[molecule.id] = result
@@ -321,10 +337,53 @@ def run_pipeline(session: Session, job_id: str) -> None:
         _set_job_status(session, job, "COMPLETE", None)
 
     except Exception as exc:  # noqa: BLE001 — top-level job failure boundary
-        _log_stage(session, job_id, job.current_stage or "unknown", "FAILED", str(exc))
-        job.failure_reason = str(exc)
-        _set_job_status(session, job, "FAILED", job.current_stage)
+        # The session may be unusable (e.g. a database error mid-statement);
+        # roll back to the last stage commit before recording the failure.
+        session.rollback()
+        stage = job.current_stage or "unknown"
+        log.error(
+            "pipeline failed", exc_info=exc, extra={"job_id": job_id, "stage": stage}
+        )
+        public_reason = _public_failure_reason(exc, stage, job_id)
+        _log_stage(session, job_id, stage, "FAILED", public_reason)
+        job.failure_reason = public_reason
+        _set_job_status(session, job, "FAILED", stage)
         raise
+
+
+def _public_failure_reason(exc: Exception, stage: str, job_id: str) -> str:
+    """Failure text that is safe to store and show to API clients.
+
+    Raw exception text can contain SQL, bound parameters and filesystem
+    paths (database errors especially), and this string is returned by the
+    job-status endpoint. Outside development only the exception class is
+    exposed; the full traceback goes to the server log, tagged with the job.
+    """
+    if settings.expose_error_detail:
+        return f"{exc.__class__.__name__}: {exc}"
+    return f"Stage '{stage}' failed ({exc.__class__.__name__}). See server logs for job {job_id}."
+
+
+def fail_interrupted_jobs() -> int:
+    """Mark runs left in a non-terminal state as FAILED. Returns the count.
+
+    Pipelines execute inside the API process (see docs/DEPLOYMENT.md), so a
+    restart abandons whatever was running. Without this, those jobs would
+    show as "running" forever. Valid because exactly one app process is
+    supported; with several workers this would fail another worker's run.
+    """
+    reason = "Interrupted: the application restarted while this run was in progress."
+    with get_session() as session:
+        jobs = session.execute(
+            select(models.Job).where(models.Job.status.not_in(TERMINAL_STATUSES))
+        ).scalars().all()
+        for job in jobs:
+            stage = job.current_stage or "queued"
+            _log_stage(session, job.id, stage, "FAILED", reason)
+            job.failure_reason = reason
+            job.status = "FAILED"
+            session.add(job)
+        return len(jobs)
 
 
 def _run_admet(session, job, job_id, context, inputs, params, delay):

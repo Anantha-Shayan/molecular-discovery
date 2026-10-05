@@ -133,7 +133,9 @@ def detect_format(filename: str | None) -> str | None:
     return None
 
 
-def parse_structure(raw: bytes | str, filename: str | None = None) -> ParsedStructure:
+def parse_structure(
+    raw: bytes | str, filename: str | None = None, max_bytes: int = MAX_FILE_BYTES
+) -> ParsedStructure:
     """Parse and validate a protein structure file.
 
     Pure function: no database, no network, no filesystem. That's what makes
@@ -148,10 +150,10 @@ def parse_structure(raw: bytes | str, filename: str | None = None) -> ParsedStru
         text_content = raw
     else:
         data = raw
-        if len(data) > MAX_FILE_BYTES:
+        if len(data) > max_bytes:
             return _fail(
                 checks, "readable", "Structure readable",
-                f"File is {len(data) / 1e6:.1f} MB, above the {MAX_FILE_BYTES // (1024 * 1024)} MB limit.",
+                f"File is {len(data) / 1e6:.1f} MB, above the {max_bytes // (1024 * 1024)} MB limit.",
             )
         try:
             text_content = data.decode("utf-8")

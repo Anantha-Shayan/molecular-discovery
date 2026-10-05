@@ -13,9 +13,9 @@ frontend needs to change.
 """
 from __future__ import annotations
 
-import os
 import time
 
+from ..config import settings
 from ..stages import mocks, sa_scoring
 from .base import ServiceInfo, TargetContext
 
@@ -23,14 +23,13 @@ from .base import ServiceInfo, TargetContext
 # UI can render a single state change. A small deliberate delay makes the
 # orchestration visible during a demo. It applies ONLY to mocked stages —
 # real SA scoring is never artificially slowed — and tests set it to 0.
-DEFAULT_STAGE_DELAY_SECONDS = float(os.environ.get("MDP_STAGE_DELAY_SECONDS", "0.8"))
 
 
 def pace(delay: float | None) -> None:
     """Sleep once for a mocked stage. Called by the orchestrator per STAGE,
     not per molecule — pacing every call would make run time scale with
     library size and turn a few-second demo into a minute-long one."""
-    seconds = DEFAULT_STAGE_DELAY_SECONDS if delay is None else delay
+    seconds = settings.stage_delay_seconds if delay is None else delay
     if seconds > 0:
         time.sleep(seconds)
 

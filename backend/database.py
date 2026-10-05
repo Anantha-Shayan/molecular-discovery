@@ -1,45 +1,59 @@
 """
-Database engine/session wiring.
+Database engine and session wiring.
 
-MVP choice: SQLite file on disk. This is explicitly an MVP simplification —
-in production this would be Postgres (JSONB support, concurrent writers,
-proper migrations via Alembic). Swapping is just changing DATABASE_URL.
+PostgreSQL is the deployed database (DATABASE_URL). SQLite remains
+available only for `APP_ENV=development` and the default test run, purely
+as a zero-setup convenience — config.py refuses it in demo/production.
 
-DATABASE_URL can be overridden via the environment, which is how the test
-suite points at a throwaway database instead of the dev one.
+Schema management:
+  * PostgreSQL: Alembic (`alembic upgrade head`) is the only thing that
+    creates or changes tables. The application never calls create_all().
+  * SQLite (dev/tests): tables are created from the models at startup.
 """
 from __future__ import annotations
 
-import os
+import time
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "app.db")
-DEFAULT_DATABASE_URL = f"sqlite:///{os.path.abspath(DB_PATH)}"
-DATABASE_URL = os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
+from .config import settings
+from .logging_config import get_logger
 
-if DATABASE_URL.startswith("sqlite"):
-    os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
+log = get_logger("database")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-
-if DATABASE_URL.startswith("sqlite"):
-    from sqlalchemy import event
-
-    @event.listens_for(engine, "connect")
-    def _sqlite_pragmas(dbapi_connection, _record):
-        # WAL lets the UI poll job status while the pipeline is writing;
-        # in the default rollback-journal mode a long write transaction
-        # makes readers wait. busy_timeout turns a transient lock into a
-        # short wait instead of an immediate "database is locked" error.
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA busy_timeout=5000")
-        cursor.close()
+DATABASE_URL = settings.database_url
 
 
+def _make_engine():
+    if settings.is_sqlite:
+        engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
+        @event.listens_for(engine, "connect")
+        def _sqlite_pragmas(dbapi_connection, _record):
+            # WAL lets readers poll job status while the pipeline writes.
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=5000")
+            cursor.close()
+
+        return engine
+
+    return create_engine(
+        DATABASE_URL,
+        # Without this a connection attempt to an unreachable host can block
+        # for minutes, which would make wait_for_database() overshoot its
+        # own deadline.
+        connect_args={"connect_timeout": 5},
+        pool_pre_ping=True,   # transparently replace connections dropped by a DB restart
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=1800,
+    )
+
+
+engine = _make_engine()
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
@@ -47,63 +61,16 @@ class Base(DeclarativeBase):
     pass
 
 
-# SQLAlchemy type -> SQLite column type, for the additive migration below.
-_SQLITE_TYPES = {
-    "INTEGER": "INTEGER",
-    "BOOLEAN": "BOOLEAN",
-    "FLOAT": "FLOAT",
-    "JSON": "JSON",
-    "TEXT": "TEXT",
-    "DATETIME": "DATETIME",
-}
-
-
-def ensure_schema() -> None:
-    """Add columns that exist on the models but not yet in the database.
-
-    MVP stand-in for Alembic. `create_all` creates missing *tables* but never
-    alters existing ones, so a developer with an older `app.db` would other-
-    wise get "no such column" errors after a model change. Walking the model
-    metadata and issuing `ALTER TABLE ... ADD COLUMN` for anything missing
-    keeps existing rows (and existing run history) intact.
-
-    Deliberately limited to *adding* nullable columns — renames, drops and
-    type changes are exactly the cases that need a real migration tool, and
-    silently guessing at them would be worse than failing loudly.
-    """
-    if not DATABASE_URL.startswith("sqlite"):
-        return  # Only the SQLite dev database is managed this way.
-
-    inspector = inspect(engine)
-    existing_tables = set(inspector.get_table_names())
-
-    with engine.begin() as conn:
-        # Unsorted: these models have mutually dependent FKs (targets →
-        # artifacts → jobs → targets), and ALTER TABLE ADD COLUMN doesn't
-        # care about ordering anyway.
-        for table in Base.metadata.tables.values():
-            if table.name not in existing_tables:
-                continue  # create_all handles brand-new tables.
-            present = {col["name"] for col in inspector.get_columns(table.name)}
-            for column in table.columns:
-                if column.name in present:
-                    continue
-                type_name = column.type.compile(engine.dialect)
-                sql_type = _SQLITE_TYPES.get(type_name.upper().split("(")[0], "TEXT")
-                conn.execute(
-                    text(
-                        f'ALTER TABLE "{table.name}" '
-                        f'ADD COLUMN "{column.name}" {sql_type}'
-                    )
-                )
-
-
 def init_db() -> None:
-    # Import models so they're registered on Base.metadata before create_all.
-    from . import models  # noqa: F401
+    """Create tables for SQLite dev/test databases only.
 
-    Base.metadata.create_all(bind=engine)
-    ensure_schema()
+    On PostgreSQL this is deliberately a no-op: the schema is owned by
+    Alembic, and creating tables behind its back would defeat versioning.
+    """
+    from . import models  # noqa: F401  (register models on Base.metadata)
+
+    if settings.is_sqlite:
+        Base.metadata.create_all(bind=engine)
 
 
 @contextmanager
@@ -117,3 +84,41 @@ def get_session():
         raise
     finally:
         session.close()
+
+
+def check_connection() -> None:
+    """Raise if the database cannot answer a trivial query."""
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+
+
+def wait_for_database(timeout_seconds: int | None = None) -> None:
+    """Block until the database accepts connections, with capped backoff.
+
+    Compose's `depends_on: service_healthy` orders container startup, but a
+    database can still drop connections later (restart, failover), and the
+    app may be started outside Compose. Retrying here makes startup
+    independent of ordering without a fixed `sleep`.
+    """
+    timeout = settings.db_wait_timeout_seconds if timeout_seconds is None else timeout_seconds
+    deadline = time.monotonic() + timeout
+    delay = 0.5
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            check_connection()
+            log.info("database ready", extra={"status": f"attempt {attempt}"})
+            return
+        except Exception as exc:  # noqa: BLE001 - any failure means "not ready yet"
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"Database not reachable after {timeout}s "
+                    f"({settings.safe_database_url}): {exc.__class__.__name__}"
+                ) from exc
+            log.warning(
+                "database not ready, retrying in %.1fs (attempt %d): %s",
+                delay, attempt, exc.__class__.__name__,
+            )
+            time.sleep(delay)
+            delay = min(delay * 1.7, 5.0)

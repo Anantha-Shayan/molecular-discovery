@@ -52,8 +52,13 @@ class Target(Base):
     name: Mapped[str] = mapped_column(String)
     source: Mapped[str] = mapped_column(String)  # "upload" | "pdb_id" | "demo"
     pdb_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    # targets -> artifacts -> jobs -> targets is a foreign-key cycle. Naming
+    # this constraint and marking it use_alter makes the DDL emit it as a
+    # separate ALTER TABLE after both tables exist (required by PostgreSQL).
     artifact_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("artifacts.id"), nullable=True
+        String,
+        ForeignKey("artifacts.id", use_alter=True, name="fk_targets_artifact_id"),
+        nullable=True,
     )
 
     # --- structure file -------------------------------------------------
@@ -89,13 +94,13 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    target_id: Mapped[str] = mapped_column(String, ForeignKey("targets.id"))
+    target_id: Mapped[str] = mapped_column(String, ForeignKey("targets.id"), index=True)
     status: Mapped[str] = mapped_column(String, default="SUBMITTED")
     current_stage: Mapped[str | None] = mapped_column(String, nullable=True)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     params: Mapped[dict] = mapped_column(JSON, default=dict)
     label: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now, index=True)
     updated_at: Mapped[dt.datetime] = mapped_column(
         DateTime, default=_now, onupdate=_now
     )
@@ -111,7 +116,7 @@ class JobStageLog(Base):
     __tablename__ = "job_stage_logs"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"))
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), index=True)
     stage: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String)  # STARTED | SUCCEEDED | FAILED | RETRIED
     attempt: Mapped[int] = mapped_column(default=1)
@@ -127,7 +132,7 @@ class Molecule(Base):
     __tablename__ = "molecules"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"))
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), index=True)
     display_id: Mapped[str] = mapped_column(String)  # e.g. MDP-894-012
     smiles: Mapped[str] = mapped_column(Text)
     inchikey: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -142,8 +147,8 @@ class StageResult(Base):
     __tablename__ = "stage_results"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    molecule_id: Mapped[str] = mapped_column(String, ForeignKey("molecules.id"))
-    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"))
+    molecule_id: Mapped[str] = mapped_column(String, ForeignKey("molecules.id"), index=True)
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), index=True)
     stage: Mapped[str] = mapped_column(String)  # screening | sa | admet | affinity | kinetics
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     is_mocked: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -156,11 +161,14 @@ class Artifact(Base):
     __tablename__ = "artifacts"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    job_id: Mapped[str | None] = mapped_column(String, ForeignKey("jobs.id"), nullable=True)
+    job_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("jobs.id"), nullable=True, index=True
+    )
     molecule_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("molecules.id"), nullable=True
     )
     stage: Mapped[str | None] = mapped_column(String, nullable=True)
     kind: Mapped[str] = mapped_column(String)  # pdb | sdf_input | sdf_output | csv_results
+    # Relative to DATA_DIR (see backend/storage.py) — never an absolute host path.
     storage_path: Mapped[str] = mapped_column(String)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now)
