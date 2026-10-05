@@ -1,83 +1,91 @@
-# Molecular Discovery Platform — deployment stack.
-#
-#   Internet ──> app (FastAPI + UI + pipeline) ──> postgres (not published)
-#
-# Quick start:   cp .env.example .env   # then set POSTGRES_PASSWORD
-#                docker compose up -d --build
-# Details:       docs/DEPLOYMENT.md
+  # Molecular Discovery Platform — deployment stack.
+  #
+  #   Internet ──> app (FastAPI + UI + pipeline) ──> postgres (not published)
+  #
+  # Quick start:   cp .env.example .env   # then set POSTGRES_PASSWORD
+  #                docker compose up -d --build
+  # Details:       docs/DEPLOYMENT.md
 
-name: molecular-discovery
+  name: molecular-discovery
 
-services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-molecular_discovery}
-      POSTGRES_USER: ${POSTGRES_USER:-mdp}
-      # No default on purpose: Compose refuses to start until it is set.
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
-      start_period: 10s
-    # No `ports:` — PostgreSQL is reachable only from other services on this
-    # Compose network, never from the host or the internet.
-    logging: &logging
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+  services:
+    postgres:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        POSTGRES_DB: ${POSTGRES_DB:-molecular_discovery}
+        POSTGRES_USER: ${POSTGRES_USER:-mdp}
+        # No default on purpose: Compose refuses to start until it is set.
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}
+      volumes:
+        - pgdata:/var/lib/postgresql/data
+      networks:
+        - molecular-discovery-network
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 3s
+        retries: 12
+        start_period: 10s
+      # No `ports:` — PostgreSQL is reachable only from other services on this
+      # Compose network, never from the host or the internet.
+      logging: &logging
+        driver: json-file
+        options:
+          max-size: "10m"
+          max-file: "3"
 
-  app:
-    build: .
-    image: molecular-discovery:latest
-    restart: unless-stopped
-    init: true
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      APP_ENV: ${APP_ENV:-demo}
-      # Host is the Compose service name, not localhost.
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mdp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-molecular_discovery}
-      DATA_DIR: /var/lib/mdp
-      PORT: ${PORT:-8008}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      CORS_ORIGINS: ${CORS_ORIGINS:-}
-      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-128}
-      STAGE_DELAY_SECONDS: ${STAGE_DELAY_SECONDS:-0.8}
-      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
-      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
-      DB_WAIT_TIMEOUT_SECONDS: ${DB_WAIT_TIMEOUT_SECONDS:-60}
-    ports:
-      - "${PORT:-8008}:${PORT:-8008}"
-    volumes:
-      # Run artifacts (PDB/SDF/stage outputs) and stored uploads. A named
-      # volume survives container recreation. See docs/DEPLOYMENT.md for a
-      # host bind-mount alternative.
-      - mdp_data:/var/lib/mdp
-    # Readiness (database reachable, schema current), not just liveness.
-    healthcheck:
-      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/ready' % os.environ.get('PORT', '8008'), timeout=3)"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 40s
-    # Hardening: nothing in the app writes outside DATA_DIR and /tmp.
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    logging: *logging
+    app:
+      build: .
+      image: molecular-discovery:latest
+      restart: unless-stopped
+      init: true
+      depends_on:
+        postgres:
+          condition: service_healthy
+      environment:
+        APP_ENV: ${APP_ENV:-demo}
+        # Host is the Compose service name, not localhost.
+        DATABASE_URL: postgresql://${POSTGRES_USER:-mdp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-molecular_discovery}
+        DATA_DIR: /var/lib/mdp
+        PORT: ${PORT:-8008}
+        LOG_LEVEL: ${LOG_LEVEL:-INFO}
+        CORS_ORIGINS: ${CORS_ORIGINS:-}
+        MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-128}
+        STAGE_DELAY_SECONDS: ${STAGE_DELAY_SECONDS:-0.8}
+        ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
+        RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+        DB_WAIT_TIMEOUT_SECONDS: ${DB_WAIT_TIMEOUT_SECONDS:-60}
+      ports:
+        - "${PORT:-8008}:${PORT:-8008}"
+      volumes:
+        # Run artifacts (PDB/SDF/stage outputs) and stored uploads. A named
+        # volume survives container recreation. See docs/DEPLOYMENT.md for a
+        # host bind-mount alternative.
+        - mdp_data:/var/lib/mdp
+      networks:
+        - molecular-discovery-network
+      # Readiness (database reachable, schema current), not just liveness.
+      healthcheck:
+        test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/ready' % os.environ.get('PORT', '8008'), timeout=3)"]
+        interval: 15s
+        timeout: 5s
+        retries: 3
+        start_period: 40s
+      # Hardening: nothing in the app writes outside DATA_DIR and /tmp.
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - no-new-privileges:true
+      cap_drop:
+        - ALL
+      logging: *logging
 
-volumes:
-  pgdata:
-  mdp_data:
+  volumes:
+    pgdata:
+    mdp_data:
+
+  networks:
+    molecular-discovery-network:
+      name: molecular-discovery-network
