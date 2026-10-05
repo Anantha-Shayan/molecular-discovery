@@ -56,15 +56,20 @@
         ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
         RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
         DB_WAIT_TIMEOUT_SECONDS: ${DB_WAIT_TIMEOUT_SECONDS:-60}
-      ports:
-        - "${PORT:-8008}:${PORT:-8008}"
+      # ports:
+      #   - "${PORT:-8008}:${PORT:-8008}"
       volumes:
         # Run artifacts (PDB/SDF/stage outputs) and stored uploads. A named
         # volume survives container recreation. See docs/DEPLOYMENT.md for a
         # host bind-mount alternative.
         - mdp_data:/var/lib/mdp
       networks:
-        - molecular-discovery-network
+        molecular-discovery-network:
+          name: molecular-discovery-network
+
+        caddy-proxy:
+          external: true
+          name: n8n-stack_default
       # Readiness (database reachable, schema current), not just liveness.
       healthcheck:
         test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/ready' % os.environ.get('PORT', '8008'), timeout=3)"]
