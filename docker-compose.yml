@@ -64,12 +64,9 @@
         # host bind-mount alternative.
         - mdp_data:/var/lib/mdp
       networks:
-        molecular-discovery-network:
-          name: molecular-discovery-network
+        - molecular-discovery-network
+        - caddy-proxy
 
-        caddy-proxy:
-          external: true
-          name: n8n-stack_default
       # Readiness (database reachable, schema current), not just liveness.
       healthcheck:
         test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/ready' % os.environ.get('PORT', '8008'), timeout=3)"]
@@ -94,3 +91,7 @@
   networks:
     molecular-discovery-network:
       name: molecular-discovery-network
+
+    caddy-proxy:
+      external: true
+      name: n8n-stack_default
