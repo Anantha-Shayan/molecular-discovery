@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Discoveries — Molecular Discovery Platform</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="assets/tokens.js"></script>
+<link href="assets/app.css" rel="stylesheet"/>
+</head>
+<body class="bg-background font-body-default text-on-surface antialiased">
+
+<header id="app-header" class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest border-b border-surface-container-high"></header>
+<aside id="app-sidebar" class="fixed left-0 top-[92px] bottom-0 w-64 bg-surface-container-lowest border-r border-surface-container-high z-40 flex flex-col justify-between overflow-y-auto"></aside>
+
+<div class="lg:pl-64">
+<main class="relative pt-[92px] w-full min-h-screen">
+  <div class="w-full px-space-lg py-space-xl max-w-7xl mx-auto space-y-space-lg">
+
+    <!-- Page header -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+      <div>
+        <div class="font-label-caps text-label-caps text-tertiary uppercase tracking-widest mb-space-xs">
+          Discovery Workspace
+        </div>
+        <h1 class="font-display text-display text-on-surface tracking-tight">Discoveries</h1>
+        <p class="font-body-default text-body-lg text-outline mt-space-2xs">
+          Every pipeline run executed on this instance, newest first.
+        </p>
+      </div>
+      <a href="new-discovery.html"
+         class="px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-headline-sm text-headline-sm rounded shadow-sm transition-all flex items-center gap-space-xs self-start">
+        <span class="material-symbols-outlined text-[18px]">add</span>
+        New Discovery
+      </a>
+    </div>
+
+    <!-- Runs -->
+    <div class="bg-surface-container-lowest rounded-lg shadow-sm overflow-hidden">
+      <div class="bg-surface-container-low px-space-md py-space-sm flex items-center justify-between">
+        <span class="font-headline-sm text-headline-sm text-on-surface">Discovery Runs</span>
+        <span id="run-count" class="font-mono-sm text-mono-sm text-outline">—</span>
+      </div>
+
+      <div id="runs-loading" class="p-space-xl text-center font-body-default text-body-default text-outline">
+        Loading runs…
+      </div>
+
+      <div id="runs-empty" hidden class="p-space-xl flex flex-col items-center text-center gap-space-sm">
+        <span class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
+          <span class="material-symbols-outlined text-[24px]">science</span>
+        </span>
+        <div class="font-headline-sm text-headline-sm text-on-surface">No discovery runs yet</div>
+        <p class="font-body-default text-body-default text-outline max-w-md">
+          Start by defining a protein target. You can upload a PDB or mmCIF file,
+          fetch a structure by PDB ID, or use the bundled demo target.
+        </p>
+        <a href="new-discovery.html"
+           class="mt-space-xs px-space-lg py-space-sm bg-primary hover:bg-primary-container text-on-primary font-headline-sm text-headline-sm rounded transition-colors flex items-center gap-space-xs">
+          <span class="material-symbols-outlined text-[18px]">add</span>
+          New Discovery
+        </a>
+      </div>
+
+      <div id="runs-error" hidden class="p-space-lg"></div>
+
+      <div id="runs-table" hidden class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="font-label-caps text-label-caps text-outline uppercase tracking-wider bg-surface-container-low/60">
+              <th class="px-space-md py-space-sm">Run</th>
+              <th class="px-space-md py-space-sm">Target</th>
+              <th class="px-space-md py-space-sm">Source</th>
+              <th class="px-space-md py-space-sm">Status</th>
+              <th class="px-space-md py-space-sm text-right">Candidates</th>
+              <th class="px-space-md py-space-sm text-right">Created</th>
+              <th class="px-space-md py-space-sm"></th>
+            </tr>
+          </thead>
+          <tbody id="runs-tbody" class="divide-y divide-surface-container-high/60"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Honest framing -->
+    <div class="bg-surface-container-low p-space-md rounded border-l-2 border-primary space-y-space-2xs">
+      <div class="flex items-center gap-space-xs text-primary font-mono-sm text-mono-sm font-semibold">
+        <span class="material-symbols-outlined text-[16px]">info</span>
+        WHAT THIS APPLICATION IS
+      </div>
+      <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+        An integration and orchestration MVP. Target intake, PDB validation, job
+        creation, pipeline execution, molecule persistence, SA scoring and SDF
+        export are real. Chemical-space screening, ADMET, binding affinity and
+        unbinding kinetics are deterministic demo adapters standing in for
+        partner engines, and are labelled as such everywhere they appear.
+      </p>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script src="assets/app.js"></script>
+<script>
+  const STATUS_STYLE = {
+    COMPLETE: "bg-secondary-container/60 text-on-secondary-container",
+    FAILED: "bg-error-container text-on-error-container",
+    SUBMITTED: "bg-surface-container text-on-surface-variant",
+  };
+
+  function statusChip(status) {
+    const style = STATUS_STYLE[status] || "bg-surface-container-high text-primary";
+    const pulse = ["COMPLETE", "FAILED", "SUBMITTED"].includes(status)
+      ? ""
+      : '<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>';
+    return `<span class="inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded font-mono-sm text-mono-sm font-medium ${style}">${pulse}${status}</span>`;
+  }
+
+  const SOURCE_LABEL = { demo: "Demo target", upload: "Uploaded file", pdb_id: "PDB ID" };
+
+  function renderRows(jobs) {
+    document.getElementById("runs-tbody").innerHTML = jobs
+      .map((job) => `
+        <tr class="hover:bg-surface-container-low/70 transition-colors cursor-pointer" data-job="${job.job_id}">
+          <td class="px-space-md py-space-sm">
+            <div class="font-mono-data text-mono-data text-on-surface font-semibold">${fmt.dash(job.label)}</div>
+            <div class="font-mono-sm text-mono-sm text-outline">${job.job_id.slice(0, 8)}</div>
+          </td>
+          <td class="px-space-md py-space-sm">
+            <div class="font-body-default text-body-default text-on-surface">${fmt.dash(job.target_name)}</div>
+            <div class="font-mono-sm text-mono-sm text-outline">${job.pdb_id ? "PDB " + job.pdb_id : "—"}</div>
+          </td>
+          <td class="px-space-md py-space-sm font-mono-sm text-mono-sm text-on-surface-variant">
+            ${SOURCE_LABEL[job.target_source] || "—"}
+          </td>
+          <td class="px-space-md py-space-sm">${statusChip(job.status)}</td>
+          <td class="px-space-md py-space-sm text-right font-mono-data text-mono-data text-on-surface">${fmt.int(job.candidate_count)}</td>
+          <td class="px-space-md py-space-sm text-right font-mono-sm text-mono-sm text-outline">${fmt.when(job.created_at)}</td>
+          <td class="px-space-md py-space-sm text-right">
+            <span class="material-symbols-outlined text-[18px] text-outline">chevron_right</span>
+          </td>
+        </tr>`)
+      .join("");
+
+    document.querySelectorAll("#runs-tbody tr").forEach((row) => {
+      row.addEventListener("click", () => {
+        window.location.href = `dashboard.html?job=${row.dataset.job}`;
+      });
+    });
+  }
+
+  async function load() {
+    Shell.render({ breadcrumb: [{ label: "Discoveries" }] });
+    Shell.loadEngines();
+    try {
+      const data = await API.jobs();
+      document.getElementById("runs-loading").hidden = true;
+      document.getElementById("run-count").textContent =
+        `${data.jobs.length} run${data.jobs.length === 1 ? "" : "s"}`;
+      if (data.jobs.length === 0) {
+        document.getElementById("runs-empty").hidden = false;
+        return;
+      }
+      renderRows(data.jobs);
+      document.getElementById("runs-table").hidden = false;
+    } catch (error) {
+      document.getElementById("runs-loading").hidden = true;
+      showError("runs-error", `${error.message}. Is the backend running?`);
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

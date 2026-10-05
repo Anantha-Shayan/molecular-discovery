@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="web_dashboard" name="shell-type"/>
-<title>Molecular Discovery Platform — KRAS G12D Workspace</title>
+<title>Discovery Run — Molecular Discovery Platform</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
@@ -15,6 +15,7 @@
       body { overscroll-behavior: none; }
     }
     ::-webkit-scrollbar { display: none; }
+    .structure-cell svg { width: 100%; height: 100%; }
   </style>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script id="tailwind-config">
@@ -61,7 +62,7 @@
 <!-- Brand & Primary Nav -->
 <div class="flex items-center gap-8">
 <a class="flex items-center gap-2 hover:opacity-95 transition-opacity" href="#">
-<img alt="Molecular Discovery Platform Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WTWd21VvSlw3eWFGXy4kXSJudNq9ZnGzNTmqxDoIWB3wjp9DqWNvrD9ZBphXF0NnUxmfoFKBfuYWu9w30Os3-C6q4cVpd75Vuc1pu4LrDBQqOl868Y2Bza77mHNPryWDFU_RIeJQyj_YHGn8qkbW-_OEOqtsxomt71Y2G9SKahhC5_n_dxaw66-tdY2zJM3DnnpzNYlyHwEGXISaRiU8E1gf2gSSxOd21AIde9jiG44FmOsPN3FYMD2S1q"/>
+<span class="w-8 h-8 rounded bg-teal-600 flex items-center justify-center"><span class="material-symbols-outlined text-white text-[18px]">hub</span></span><span class="font-display text-sm font-semibold text-slate-900 tracking-tight">Molecular Discovery Platform</span>
 </a>
 <nav class="hidden md:flex items-center gap-1 text-xs font-medium text-slate-600">
 <a class="px-3 py-1.5 rounded-md text-teal-800 bg-teal-50/80 font-semibold transition-colors" href="#">Discoveries</a>
@@ -100,19 +101,19 @@
 <div class="fixed top-14 left-0 right-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-200/70 h-9">
 <div class="max-w-[1720px] mx-auto h-full px-6 flex items-center justify-between text-xs font-mono text-slate-500">
 <div class="flex items-center gap-2">
-<a class="hover:text-slate-800 transition-colors" href="#">Campaigns</a>
+<a class="hover:text-slate-800 transition-colors" href="discoveries.html">Discoveries</a>
 <span class="text-slate-300">/</span>
-<span class="text-slate-800 font-medium">RUN-2025-0894-KRAS-G12D</span>
+<span id="run-label" class="text-slate-800 font-medium">—</span>
 <span class="text-slate-300">/</span>
-<span class="inline-flex items-center gap-1.5 text-teal-700 font-sans text-[11px] font-medium ml-1">
-<span class="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-          Stage 06 Active · GPU Metadynamics Unbinding
+<span id="run-stage-indicator" class="inline-flex items-center gap-1.5 text-teal-700 font-sans text-[11px] font-medium ml-1">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+          Loading run…
         </span>
 </div>
 <div class="flex items-center gap-4 text-[11px] text-slate-400 font-mono">
-<span>RUN TIME: <strong class="text-slate-700 font-medium">04h 18m</strong></span>
+<span>RUN TIME: <strong id="run-elapsed" class="text-slate-700 font-medium">—</strong></span>
 <span>·</span>
-<span>ETA: <strong class="text-slate-700 font-medium">~11m</strong></span>
+<span>JOB: <strong id="run-job-id" class="text-slate-700 font-medium">—</strong></span>
 </div>
 </div>
 </div>
@@ -132,48 +133,57 @@
 <!-- Target Title & Metadata -->
 <div class="flex flex-col gap-3">
 <div class="flex items-center gap-3">
-<h1 class="font-display text-2xl font-bold tracking-tight text-slate-900">KRAS G12D</h1>
-<span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-800 border border-teal-200/60 font-sans">
-                Switch-II Pocket · Protonated (pH 7.4)
+<h1 id="target-name" class="font-display text-2xl font-bold tracking-tight text-slate-900">—</h1>
+<span id="target-source-badge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-800 border border-teal-200/60 font-sans">
+                —
               </span>
 </div>
-<!-- Crisp Clean Specs Row -->
+<!-- Specs row — every value below is read from the target's own structure file -->
 <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-600">
 <div class="flex items-center gap-1.5">
-<span class="text-slate-400 uppercase tracking-wider font-mono text-[10px]">RCSB PDB</span>
-<span class="font-mono font-medium text-slate-900">8AZX</span>
-<span class="text-slate-400 text-[11px]">(1.45 Å · X-Ray)</span>
+<span class="text-slate-400 uppercase tracking-wider font-mono text-[10px]">PDB</span>
+<span id="target-pdb" class="font-mono font-medium text-slate-900">—</span>
+<span id="target-method" class="text-slate-400 text-[11px]"></span>
 </div>
 <div class="h-3 w-px bg-slate-200"></div>
 <div class="flex items-center gap-1.5">
 <span class="text-slate-400 uppercase tracking-wider font-mono text-[10px]">Chain</span>
-<span class="text-slate-800 font-medium">A (Met1-Lys188)</span>
+<span id="target-chain" class="text-slate-800 font-medium">—</span>
 </div>
 <div class="h-3 w-px bg-slate-200"></div>
 <div class="flex items-center gap-1.5">
-<span class="text-slate-400 uppercase tracking-wider font-mono text-[10px]">Pocket Vol</span>
-<span class="font-mono font-medium text-slate-900">482 Å³</span>
+<span class="text-slate-400 uppercase tracking-wider font-mono text-[10px]">Residues</span>
+<span id="target-residues" class="font-mono font-medium text-slate-900">—</span>
 </div>
 <div class="h-3 w-px bg-slate-200"></div>
 <div class="flex items-center gap-1.5">
-<span class="text-slate-400 uppercase tracking-wider font-mono text-[10px]">Cofactor</span>
-<span class="text-slate-800">GDP · Mg²⁺</span>
+<span class="text-slate-400 uppercase tracking-wider font-mono text-[10px]">Atoms</span>
+<span id="target-atoms" class="font-mono font-medium text-slate-900">—</span>
+</div>
+<div class="h-3 w-px bg-slate-200"></div>
+<div class="flex items-center gap-1.5">
+<span class="text-slate-400 uppercase tracking-wider font-mono text-[10px]">Ligands</span>
+<span id="target-ligands" class="text-slate-800">—</span>
 </div>
 </div>
 </div>
 <!-- Action Controls -->
 <div class="flex items-center gap-3 shrink-0">
-<button class="h-9 px-3.5 rounded-md border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5">
-<span class="material-symbols-outlined text-[17px] text-slate-500">upload_file</span>
-              Drop Structure (.PDB / .CIF)
-            </button>
-<button class="h-9 px-3.5 rounded-md border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5">
-<span class="material-symbols-outlined text-[17px] text-slate-500">tune</span>
-              Docking Parameters
-            </button>
+<a href="discoveries.html" class="h-9 px-3.5 rounded-md border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[17px] text-slate-500">list</span>
+              All Discoveries
+            </a>
+<a id="view-structure-btn" href="#" target="_blank" rel="noopener" class="h-9 px-3.5 rounded-md border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[17px] text-slate-500">description</span>
+              View Target PDB
+            </a>
+<a href="new-discovery.html" class="h-9 px-3.5 rounded-md border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[17px] text-slate-500">add</span>
+              New Discovery
+            </a>
 <button id="run-pipeline-btn" class="h-9 px-4 rounded-md bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold tracking-wide transition-all shadow-sm flex items-center gap-2">
-<span class="material-symbols-outlined text-[17px]">play_arrow</span>
-              <span id="run-pipeline-label">Run Pipeline</span>
+<span class="material-symbols-outlined text-[17px]">replay</span>
+              <span id="run-pipeline-label">Re-run This Configuration</span>
             </button>
 </div>
 </div>
@@ -201,7 +211,7 @@
 <span class="material-symbols-outlined text-[14px] text-teal-600">check</span>
 </div>
 <div class="font-display font-semibold text-slate-800 text-xs mt-1">Protein / PDB</div>
-<div class="text-[11px] text-slate-500">PDB 8AZX · Prepared Pocket</div>
+<div id="stage-sub-target" class="text-[11px] text-slate-500">User-supplied structure</div>
 </div>
 <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between font-mono text-xs">
 <span class="font-semibold text-slate-800">1 Target</span>
@@ -215,8 +225,8 @@
 <span>02 · CHEMICAL SPACE</span>
 <span id="stage-icon-screening" class="material-symbols-outlined text-[14px] text-slate-300">radio_button_unchecked</span>
 </div>
-<div class="font-display font-semibold text-slate-800 text-xs mt-1">Ultra-Large Screening</div>
-<div id="stage-sub-screening" class="text-[11px] text-slate-500">Conceptual scale: 10T+ (demo seed set)</div>
+<div class="font-display font-semibold text-slate-800 text-xs mt-1">Demo Library Screening</div>
+<div id="stage-sub-screening" class="text-[11px] text-slate-500">Demo library (mocked)</div>
 </div>
 <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between font-mono text-xs">
 <div>
@@ -234,7 +244,7 @@
 <span id="stage-icon-sa" class="material-symbols-outlined text-[14px] text-slate-300">radio_button_unchecked</span>
 </div>
 <div class="font-display font-semibold text-slate-800 text-xs mt-1">SA Score Filter</div>
-<div class="text-[11px] text-slate-500">RDKit SAscore, real — threshold ≤ 5.0</div>
+<div id="stage-sub-sa" class="text-[11px] text-slate-500">RDKit SAscore — real</div>
 </div>
 <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between font-mono text-xs">
 <div>
@@ -252,7 +262,7 @@
 <span id="stage-icon-admet" class="material-symbols-outlined text-[14px] text-slate-300">radio_button_unchecked</span>
 </div>
 <div class="font-display font-semibold text-slate-800 text-xs mt-1">ADMET Prediction</div>
-<div class="text-[11px] text-slate-500">220+ In Silico Properties (mocked)</div>
+<div id="stage-sub-admet" class="text-[11px] text-slate-500">Demo adapter (mocked)</div>
 </div>
 <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between font-mono text-xs">
 <div>
@@ -270,7 +280,7 @@
 <span id="stage-icon-affinity" class="material-symbols-outlined text-[14px] text-slate-300">radio_button_unchecked</span>
 </div>
 <div class="font-display font-semibold text-slate-800 text-xs mt-1">Kd &amp; ΔG Ranking</div>
-<div class="text-[11px] text-slate-500">Mocked — CPU/Docker in production</div>
+<div id="stage-sub-affinity" class="text-[11px] text-slate-500">Demo adapter — CPU/Docker in production</div>
 </div>
 <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between font-mono text-xs">
 <div>
@@ -288,7 +298,7 @@
 <span id="stage-icon-kinetics" class="material-symbols-outlined text-[14px] text-slate-300">radio_button_unchecked</span>
 </div>
 <div class="font-display font-semibold text-slate-800 text-xs mt-1">koff &amp; Residence Time τ</div>
-<div class="text-[11px] text-slate-500">Mocked — GPU enhanced sampling in production</div>
+<div id="stage-sub-kinetics" class="text-[11px] text-slate-500">Demo adapter — GPU/Docker in production</div>
 </div>
 <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between font-mono text-xs">
 <div class="flex items-baseline gap-1">
@@ -323,19 +333,15 @@
 <div>
 <div class="flex items-center gap-2">
 <h3 class="font-display text-base font-bold text-slate-900">Candidate Molecules</h3>
-<span class="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-500 border border-slate-200/60">Sample Computational Run Data</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-500 border border-slate-200/60">Computational output — not experimentally validated</span>
 </div>
-<p class="text-xs text-slate-500 mt-0.5">Top-ranked lead candidates evaluated across 220+ ADMET endpoints and unbinding kinetics.</p>
+<p id="candidates-subtitle" class="text-xs text-slate-500 mt-0.5">Candidates that survived every enabled stage. SA scores are real (RDKit); ADMET, affinity and kinetics values are mocked.</p>
 </div>
 <div class="flex items-center gap-2">
-<div class="inline-flex rounded-md border border-slate-200 p-0.5 bg-slate-50 text-xs">
-<button class="px-2.5 py-1 rounded bg-white text-slate-800 font-medium shadow-2xs">Table</button>
-<button class="px-2.5 py-1 rounded text-slate-500 hover:text-slate-800 transition-colors">2D Grid</button>
-<button class="px-2.5 py-1 rounded text-slate-500 hover:text-slate-800 transition-colors">Pareto</button>
-</div>
-<button class="h-7 px-2.5 rounded border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs flex items-center gap-1 transition-colors">
+
+<button id="export-job-sdf" class="whitespace-nowrap h-7 px-2.5 rounded border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs flex items-center gap-1 transition-colors">
 <span class="material-symbols-outlined text-[14px]">download</span>
-                Export CSV
+                Export All (.SDF)
               </button>
 </div>
 </div>
@@ -349,7 +355,7 @@
 <th class="py-3 px-3">2D Structure</th>
 <th class="py-3 px-3">MW <span class="text-[9px] text-slate-400 lowercase">g/mol</span></th>
 <th class="py-3 px-3">SA Score</th>
-<th class="py-3 px-3">ADMET <span class="text-[9px] text-slate-400 lowercase">(220+ props)</span></th>
+<th class="py-3 px-3">ADMET <span class="text-[9px] text-slate-400 lowercase">(mocked)</span></th>
 <th class="py-3 px-3 text-right">Binding Affinity <span class="text-[9px] text-slate-400 lowercase">Kd (nM)</span></th>
 <th class="py-3 px-3 text-right">koff <span class="text-[9px] text-slate-400 lowercase">s⁻¹</span></th>
 <th class="py-3 px-3 text-right">Residence Time <span class="text-[9px] text-slate-400 lowercase">min</span></th>
@@ -416,7 +422,7 @@
 <div class="flex flex-col">
 <span class="text-[10px] font-mono text-slate-400 uppercase">ADMET Profile <span class="text-amber-600 lowercase">(mocked)</span></span>
 <span id="detail-admet" class="text-xs font-semibold text-slate-800 mt-0.5">—</span>
-<span class="text-[11px] text-slate-500">220+ in silico properties evaluated</span>
+<span class="text-[11px] text-slate-500">Demo adapter output — not a real ADMET model</span>
 </div>
 <span id="detail-admet-icon" class="material-symbols-outlined text-slate-300 text-[20px]">help</span>
 </div>
@@ -457,25 +463,47 @@
 </main>
 <script>
   // ---------------------------------------------------------------------
-  // Backend wiring for the Molecular Discovery Platform MVP.
-  // Change API_BASE if the backend isn't running on localhost:8008.
+  // Discovery Run / Results screen.
+  //
+  // This screen renders ONE job, identified by ?job=<id>. Every value on
+  // it — target metadata, stage state, counts, candidates — comes from the
+  // backend for that job. Nothing here is illustrative.
+  //
+  // Served by the FastAPI app at /app, so API paths are relative.
   // ---------------------------------------------------------------------
-  const API_BASE = "http://127.0.0.1:8008";
+  const API_BASE = "";
 
-  let currentJobId = null;
+  const urlParams = new URLSearchParams(window.location.search);
+  let currentJobId = urlParams.get("job");
   let pollHandle = null;
+  let elapsedHandle = null;
   let lastCandidates = [];
+  let lastJob = null;
 
   const $ = (id) => document.getElementById(id);
 
-  function setBanner(text) {
+  function setBanner(text, tone = "info") {
     $("wiring-banner-text").textContent = text;
+    const bar = $("wiring-banner-text").closest("div.fixed");
+    if (!bar) return;
+    const tones = {
+      info: ["bg-amber-50", "border-amber-200/80"],
+      ok: ["bg-emerald-50", "border-emerald-200/80"],
+      error: ["bg-rose-50", "border-rose-200/80"],
+    };
+    ["bg-amber-50", "bg-emerald-50", "bg-rose-50",
+     "border-amber-200/80", "border-emerald-200/80", "border-rose-200/80"]
+      .forEach((cls) => bar.classList.remove(cls));
+    tones[tone].forEach((cls) => bar.classList.add(cls));
+    $("wiring-banner-text").className =
+      tone === "error" ? "text-rose-800" : tone === "ok" ? "text-emerald-800" : "";
   }
 
   const STAGE_ICON = {
     done: { icon: "check_circle", cls: "text-teal-600" },
     active: { icon: "sync", cls: "text-teal-600 animate-spin" },
     pending: { icon: "radio_button_unchecked", cls: "text-slate-300" },
+    skipped: { icon: "remove_circle", cls: "text-slate-300" },
     failed: { icon: "error", cls: "text-rose-600" },
   };
 
@@ -485,6 +513,7 @@
     const badge = $(`stage-badge-${stage.key}`);
     const card = $(`stage-card-${stage.key}`);
     const meta = STAGE_ICON[stage.status] || STAGE_ICON.pending;
+
     if (icon) {
       icon.textContent = meta.icon;
       icon.className = `material-symbols-outlined text-[14px] ${meta.cls}`;
@@ -497,21 +526,112 @@
     }
     if (badge && stage.key !== "target") {
       badge.textContent = stage.is_mocked ? "mocked" : "real";
+      badge.className = stage.is_mocked
+        ? "text-[9px] px-1.5 py-0.5 rounded bg-slate-200/60 text-slate-600 font-mono"
+        : "text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono font-medium";
     }
     if (card) {
       card.classList.toggle("ring-1", stage.status === "active");
       card.classList.toggle("ring-teal-300", stage.status === "active");
       card.classList.toggle("bg-teal-50/70", stage.status === "active");
       card.classList.toggle("border-rose-300", stage.status === "failed");
+      card.classList.toggle("opacity-50", stage.status === "skipped");
+      if (stage.detail) card.title = stage.detail;
     }
+    // Stage subtitles carry the real per-stage in → out detail once known.
+    const sub = $(`stage-sub-${stage.key}`);
+    if (sub && stage.detail && stage.key !== "target") sub.textContent = stage.detail;
+  }
+
+  function renderTarget(job) {
+    const target = job.target;
+    $("run-label").textContent = job.label || job.job_id.slice(0, 8);
+    $("run-job-id").textContent = job.job_id.slice(0, 8);
+    $("target-name").textContent = job.target_name || "—";
+    $("target-pdb").textContent = job.pdb_id || "—";
+
+    const SOURCE = { demo: "Demo fixture", upload: "Uploaded structure", pdb_id: "Fetched from RCSB" };
+    const badge = $("target-source-badge");
+    if (target) {
+      badge.textContent = SOURCE[target.source] || target.source || "—";
+      const methodBits = [];
+      if (target.experiment_method) methodBits.push(target.experiment_method);
+      if (target.resolution_a) methodBits.push(`${Number(target.resolution_a).toFixed(2)} Å`);
+      $("target-method").textContent = methodBits.length ? `(${methodBits.join(" · ")})` : "";
+
+      const chain = (target.chains || []).find((c) => c.chain_id === target.selected_chain);
+      $("target-chain").textContent = chain
+        ? `${chain.chain_id}${chain.first_residue !== null ? ` (${chain.first_residue}–${chain.last_residue})` : ""}`
+        : (target.selected_chain || "—");
+      $("target-residues").textContent =
+        target.residue_count !== null ? Number(target.residue_count).toLocaleString() : "—";
+      $("target-atoms").textContent =
+        target.atom_count !== null ? Number(target.atom_count).toLocaleString() : "—";
+      $("target-ligands").textContent =
+        (target.ligands && target.ligands.length) ? target.ligands.join(" · ") : "none";
+      $("view-structure-btn").href = `/api/targets/${target.target_id}/structure`;
+      $("view-structure-btn").classList.toggle("hidden", !target.structure_format);
+    } else {
+      badge.textContent = "—";
+    }
+
+    const config = job.config || {};
+    const subtitle = $("candidates-subtitle");
+    if (subtitle && config.sa_threshold !== undefined) {
+      subtitle.textContent =
+        `Candidates that survived every enabled stage (library ${config.library_limit}, ` +
+        `SA ≤ ${config.sa_threshold}). SA scores are real (RDKit); ADMET, affinity ` +
+        `and kinetics values are mocked.`;
+    }
+  }
+
+  function renderStageIndicator(job) {
+    const indicator = $("run-stage-indicator");
+    const active = (job.stages || []).find((s) => s.status === "active");
+    if (job.status === "COMPLETE") {
+      indicator.innerHTML =
+        '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Run complete';
+      indicator.className = "inline-flex items-center gap-1.5 text-emerald-700 font-sans text-[11px] font-medium ml-1";
+    } else if (job.status === "FAILED") {
+      indicator.innerHTML =
+        `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Failed at ${job.current_stage || "unknown stage"}`;
+      indicator.className = "inline-flex items-center gap-1.5 text-rose-700 font-sans text-[11px] font-medium ml-1";
+    } else {
+      const label = active ? `Stage ${String(active.stage_no).padStart(2, "0")} · ${active.label}` : job.status;
+      indicator.innerHTML =
+        `<span class="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span> ${label}`;
+      indicator.className = "inline-flex items-center gap-1.5 text-teal-700 font-sans text-[11px] font-medium ml-1";
+    }
+  }
+
+  function startElapsedTimer(job) {
+    if (elapsedHandle) clearInterval(elapsedHandle);
+    const startIso = job.created_at;
+    if (!startIso) return;
+    const start = new Date(startIso.endsWith("Z") ? startIso : `${startIso}Z`).getTime();
+    const tick = () => {
+      const end = (lastJob && ["COMPLETE", "FAILED"].includes(lastJob.status) && lastJob.updated_at)
+        ? new Date(lastJob.updated_at.endsWith("Z") ? lastJob.updated_at : `${lastJob.updated_at}Z`).getTime()
+        : Date.now();
+      const seconds = Math.max(0, Math.floor((end - start) / 1000));
+      const minutes = Math.floor(seconds / 60);
+      $("run-elapsed").textContent =
+        minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
+      if (lastJob && ["COMPLETE", "FAILED"].includes(lastJob.status)) clearInterval(elapsedHandle);
+    };
+    tick();
+    elapsedHandle = setInterval(tick, 1000);
   }
 
   async function refreshStatus(jobId) {
     const res = await fetch(`${API_BASE}/api/jobs/${jobId}`);
     if (!res.ok) throw new Error(`status fetch failed: ${res.status}`);
     const data = await res.json();
+    lastJob = data;
 
     data.stages.forEach(applyStageCard);
+    renderTarget(data);
+    renderStageIndicator(data);
 
     const counts = data.stages.map((s) =>
       s.count === null || s.count === undefined ? "…" : s.count.toLocaleString()
@@ -531,7 +651,7 @@
     tbody.innerHTML = "";
     if (candidates.length === 0) {
       tbody.innerHTML =
-        '<tr><td class="py-6 px-3 text-slate-400 text-center" colspan="9">No candidates yet.</td></tr>';
+        '<tr><td class="py-6 px-3 text-slate-400 text-center" colspan="10">No candidates survived this run’s filters.</td></tr>';
       return;
     }
     const statusCls = {
@@ -550,7 +670,7 @@
           <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-teal-100 text-teal-900 text-[11px]">${c.rank}</span>
         </td>
         <td class="py-3 px-3 font-semibold text-slate-900">${c.display_id}</td>
-        <td class="py-2 px-3"><div class="w-14 h-8 bg-white border border-slate-200/80 rounded flex items-center justify-center p-0.5 overflow-hidden">${c.structure_svg}</div></td>
+        <td class="py-2 px-3"><div class="structure-cell w-14 h-8 bg-white border border-slate-200/80 rounded flex items-center justify-center p-0.5 overflow-hidden">${c.structure_svg}</div></td>
         <td class="py-3 px-3 text-slate-600">${c.molecular_weight.toFixed(1)}</td>
         <td class="py-3 px-3 font-medium text-slate-800">${c.sa_score.toFixed(1)}</td>
         <td class="py-3 px-3">
@@ -617,53 +737,101 @@
     if (text && text !== "—") navigator.clipboard?.writeText(text);
   });
 
+  $("export-job-sdf")?.addEventListener("click", () => {
+    if (currentJobId) window.open(`${API_BASE}/api/jobs/${currentJobId}/candidates.sdf`, "_blank");
+  });
+
   async function pollUntilDone(jobId) {
-    const data = await refreshStatus(jobId);
+    let data;
+    try {
+      data = await refreshStatus(jobId);
+    } catch (error) {
+      setBanner(`Lost connection to backend: ${error.message}`, "error");
+      clearInterval(pollHandle);
+      return;
+    }
     if (data.status === "COMPLETE") {
-      setBanner("Pipeline complete — SA scoring real (RDKit); screening/ADMET/affinity/kinetics mocked.");
+      setBanner(
+        "Run complete. SA scoring is real (RDKit); screening, ADMET, affinity and kinetics are mocked demo adapters.",
+        "ok"
+      );
       await refreshCandidates(jobId);
-      $("run-pipeline-label").textContent = "Run Pipeline";
+      $("run-pipeline-label").textContent = "Re-run This Configuration";
       clearInterval(pollHandle);
       return;
     }
     if (data.status === "FAILED") {
-      setBanner(`Pipeline failed at stage: ${data.current_stage}`);
-      $("run-pipeline-label").textContent = "Run Pipeline";
+      setBanner(`Run failed at stage "${data.current_stage}": ${data.failure_reason || "unknown error"}`, "error");
+      $("run-pipeline-label").textContent = "Re-run This Configuration";
       clearInterval(pollHandle);
       return;
     }
-    setBanner(`Running… stage: ${data.current_stage || data.status}`);
+    const active = (data.stages || []).find((s) => s.status === "active");
+    setBanner(`Running… ${active ? active.label.toLowerCase() : data.status}`);
   }
 
-  async function runPipeline() {
-    $("run-pipeline-label").textContent = "Running…";
-    setBanner("Submitting job…");
-    const res = await fetch(`${API_BASE}/api/jobs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        target_name: "KRAS G12D",
-        pdb_id: "8AZX",
-        run_tag: String(Math.floor(1000 + Math.random() * 9000)),
-        library_limit: 10,
-        sa_threshold: 5.0,
-      }),
-    });
-    const data = await res.json();
-    currentJobId = data.job_id;
+  function watch(jobId) {
+    currentJobId = jobId;
     if (pollHandle) clearInterval(pollHandle);
-    pollHandle = setInterval(() => pollUntilDone(currentJobId), 1200);
+    pollUntilDone(jobId);
+    pollHandle = setInterval(() => pollUntilDone(jobId), 1000);
   }
 
-  $("run-pipeline-btn").addEventListener("click", runPipeline);
+  /** Re-runs the current job's target with the same configuration. */
+  async function rerun() {
+    if (!lastJob) return;
+    $("run-pipeline-label").textContent = "Starting…";
+    setBanner("Creating a new run with this configuration…");
+    const config = lastJob.config || {};
+    const body = {
+      target_id: lastJob.target ? lastJob.target.target_id : null,
+      library_limit: config.library_limit,
+      sa_threshold: config.sa_threshold,
+      enable_admet: config.enable_admet,
+      enable_affinity: config.enable_affinity,
+      enable_kinetics: config.enable_kinetics,
+      strict_admet_gate: config.strict_admet_gate,
+      affinity_shortlist: config.affinity_shortlist,
+    };
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`job creation failed: ${res.status}`);
+      const data = await res.json();
+      window.location.search = `?job=${data.job_id}`;
+    } catch (error) {
+      setBanner(`Could not start a new run: ${error.message}`, "error");
+      $("run-pipeline-label").textContent = "Re-run This Configuration";
+    }
+  }
 
-  // Initial ping so the banner reflects backend reachability immediately.
-  fetch(`${API_BASE}/docs`)
-    .then(() => setBanner('Backend connected. Click "Run Pipeline" to start a job.'))
-    .catch(() =>
-      setBanner(
-        `Backend not reachable at ${API_BASE} — start it with: uvicorn backend.main:app --port 8008`
-      )
-    );
+  $("run-pipeline-btn").addEventListener("click", rerun);
+
+  // --- boot -------------------------------------------------------------
+  (async function init() {
+    if (!currentJobId) {
+      setBanner("No run selected — open a run from Discoveries, or start a New Discovery.", "error");
+      $("candidate-tbody").innerHTML =
+        '<tr><td class="py-6 px-3 text-slate-400 text-center" colspan="10">' +
+        'No run selected. <a class="text-teal-700 underline" href="discoveries.html">Go to Discoveries</a>' +
+        '</td></tr>';
+      $("run-pipeline-btn").disabled = true;
+      return;
+    }
+    try {
+      const job = await refreshStatus(currentJobId);
+      startElapsedTimer(job);
+      if (["COMPLETE", "FAILED"].includes(job.status)) {
+        await pollUntilDone(currentJobId);
+      } else {
+        watch(currentJobId);
+      }
+    } catch (error) {
+      setBanner(`Could not load run: ${error.message}`, "error");
+    }
+  })();
 </script>
 </body></html>

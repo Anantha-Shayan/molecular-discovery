@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Local data: the SQLite dev DB and generated run artifacts are
+# reproducible by re-running the pipeline, so they don't belong in git.
+data/app.db
+data/runs/
+data/targets/
+
+# SQLite WAL sidecar files
+data/app.db-wal
+data/app.db-shm

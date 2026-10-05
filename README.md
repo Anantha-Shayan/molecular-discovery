@@ -9,14 +9,15 @@ was built from for the full architecture rationale.
 
 | Stage | Status | Detail |
 |---|---|---|
-| 01 Target | input | user-supplied protein label / PDB ID, not validated against RCSB in this MVP |
-| 02 Chemical-space screening | **mocked** | fixed 10-molecule seed library stands in for ultra-large virtual screening |
+| 01 Target intake | **real** | upload (`.pdb/.cif`), PDB ID (RCSB fetch), or bundled demo; parsed, validated and persisted |
+| 01b Structure validation | **real** | readable file, atom records, finite coordinates, chains, residues — structural checks only, not a druggability assessment |
+| 02 Chemical-space screening | **mocked** | fixed 40-compound demo library stands in for ultra-large virtual screening |
 | 03 SA scoring | **real** | RDKit's bundled Ertl & Schuffenhauer (2009) SAscore implementation, unmodified |
 | 03b Molecular weight / 2D depiction | **real** | RDKit `Descriptors.MolWt` and `rdMolDraw2D` |
-| 04 ADMET | **mocked** | deterministic pseudo-random "Favorable/Moderate" + a few illustrative properties, not a real 220-descriptor model |
-| 05 Binding affinity | **mocked** | deterministic pseudo-random Kd / ΔG |
-| 06 Unbinding kinetics | **mocked** | deterministic pseudo-random koff / residence time, loosely coupled to the mocked affinity |
-| SDF export | **real I/O** | genuine RDKit molblock + property tags; only the property *values* inside are mocked |
+| 04 ADMET | **mocked** | deterministic "Favorable/Moderate" + a few illustrative properties |
+| 05 Binding affinity | **mocked** | deterministic placeholder Kd / ΔG |
+| 06 Unbinding kinetics | **mocked** | deterministic placeholder koff / residence time |
+| SDF export | **real I/O** | genuine RDKit molblock + property tags; mocked values are tagged `_mocked` |
 
 Every mocked `StageResult` row is flagged `is_mocked=True` in the
 database and surfaced as "(mocked)" in the UI — this was a deliberate
@@ -32,21 +33,34 @@ multi-trillion-compound library is obviously out of scope for a demo.
 
 ```
 backend/
-  database.py   SQLite engine/session (swap DATABASE_URL for Postgres in prod)
+  database.py   SQLite engine (WAL), additive column migration, DATABASE_URL override
   models.py     Target, Job, JobStageLog, Molecule, StageResult, Artifact
-  schemas.py    Pydantic response models, shaped to match the dashboard
-  pipeline.py   Sequential stage orchestrator + state machine + stage log
+  schemas.py    Pydantic request/response models
+  pipeline.py   Sequential orchestrator + state machine; commits at each stage
+  targets/
+    structure.py  PDB/mmCIF parser + input validation (pure functions)
+    service.py    intake routes, persistence, artifact staging
+  services/     one adapter class per stage; declares is_mocked honestly
   stages/
     sa_scoring.py   real RDKit SA scoring
     depiction.py    real RDKit 2D SVG + SDF export
-    mocks.py        screening / ADMET / affinity / kinetics mocks
-  main.py       FastAPI app (see endpoints below)
+    mocks.py        deterministic placeholder science, seeded by target
+    library.py      40-compound demo library
+  main.py       FastAPI app; also serves the frontend at /app
 frontend/
-  dashboard.html  the provided dashboard UI, wired to the API via a
-                  <script> block at the end of the file (visual design
-                  untouched — only IDs added to elements that needed
-                  live data, plus a status banner and empty states)
+  discoveries.html · new-discovery.html · target-validation.html ·
+  configure-review.html   the New Discovery flow (Stitch design system)
+  dashboard.html          Discovery Run / results, bound to ?job=<id>
+  assets/                 shared tokens, runtime, styles
+data/
+  fixtures/     bundled demo structure (7RPZ) — see its README
+  runs/{job_id}/  per-run artifacts (generated, git-ignored)
 ```
+
+User flow: **Discoveries → New Discovery → Target Validation → Configure &
+Review → Start Discovery → Discovery Run.** See `docs/UI_UX_DEMO_GUIDE.md`
+for the screen-by-screen walkthrough and demo script, and `docs/DEMO_DATA.md`
+for the fixture, library and real-vs-mocked detail.
 
 ### Why these MVP choices (see also the earlier design discussion)
 
@@ -71,32 +85,39 @@ frontend/
 ## Running it
 
 ```bash
-pip install -r requirements.txt
-uvicorn backend.main:app --reload --port 8008
+python -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn backend.main:app --port 8008
 ```
 
-Then open `frontend/dashboard.html` directly in a browser (it calls the
-API at `http://127.0.0.1:8008` — change `API_BASE` at the top of the
-`<script>` block if you serve it elsewhere). Click **Run Pipeline**.
+Open <http://127.0.0.1:8008> — the API serves the UI. API docs are at `/docs`.
 
-API docs: `http://127.0.0.1:8008/docs` (FastAPI's auto-generated Swagger UI).
+```bash
+.venv/bin/python -m pytest tests/ -q     # 52 tests, uses a temporary database
+```
+
+`MDP_STAGE_DELAY_SECONDS` (default `0.8`) sets the deliberate pause in each
+*mocked* stage so progress is visible; set `0` for instant runs.
 
 ### Endpoints
 
-- `POST /api/jobs` — create + start a pipeline run
-- `GET /api/jobs/{job_id}` — funnel/stage status (for the dashboard's stepper)
-- `GET /api/jobs/{job_id}/candidates` — ranked candidate table
-- `GET /api/candidates/{molecule_id}` — single-candidate detail panel
-- `GET /api/candidates/{molecule_id}/sdf` — real SDF file download
+- `POST /api/targets/upload` · `POST /api/targets/pdb-id` · `POST /api/targets/demo`
+- `GET /api/targets/{id}` · `GET /api/targets/{id}/structure`
+- `GET /api/engines` — which stage engines are real vs demo adapters
+- `POST /api/jobs` — create + start a run (`target_id` + config; legacy
+  `target_name`/`pdb_id` body still accepted). Returns immediately.
+- `GET /api/jobs` · `GET /api/jobs/{id}` · `GET /api/jobs/{id}/candidates`
+- `GET /api/jobs/{id}/candidates.sdf` — all final candidates, one SDF
+- `GET /api/candidates/{id}` · `GET /api/candidates/{id}/sdf`
 
 ## Known gaps / what I'd do next with more time
 
 - No retry/backoff on stage failure (the log records failure; nothing
   auto-retries yet).
 - No auth — fine for a take-home, not for production.
-- No file-based PDB upload wired up yet (target is currently just a
-  name + PDB ID string).
-- Mocked stages are static functions; a drop-in real integration would
-  replace just the body of each function in `stages/mocks.py` — the
-  rest of the system (schema, orchestrator, API, UI) shouldn't need to
-  change.
+- Runs execute in the API process; a restart mid-run leaves a job in a
+  non-terminal state. A durable queue + CPU/GPU workers is the production
+  direction, deliberately not built here.
+- mmCIF support covers the `_atom_site` loop and a few header items only.
+- No pocket detection or structure preparation; "validation" is structural.
+- Mocked stages are deterministic placeholders. A real integration replaces one
+  adapter class in `backend/services/engines.py`.

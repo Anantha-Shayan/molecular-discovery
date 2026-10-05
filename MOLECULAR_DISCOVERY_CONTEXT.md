@@ -12,6 +12,13 @@
 
 ---
 
+> **Update 2026-10-05:** the New Discovery flow, PDB validation, target persistence,
+> service adapters, per-run artifacts and 40-compound library are now implemented.
+> Sections below describing "no PDB upload" or a hardcoded target are historical;
+> see README.md and docs/ for current behaviour.
+
+---
+
 # 1. PROJECT IDENTITY
 
 ## Project
@@ -210,14 +217,7 @@ One of:
 - PDB file upload
 - PDB ID
 
-Current MVP:
-
-```text
-target_name = "KRAS G12D"
-pdb_id = "8AZX"
-```
-
-There is currently **no actual PDB file upload implementation**.
+Current MVP: upload / PDB ID / demo target. The demo target is **7RPZ** (genuine KRAS G12D). The earlier "8AZX" label was wrong — 8AZX is KRAS G12C.
 
 ### Intended output
 
@@ -929,9 +929,9 @@ Potential production technologies could include Celery/Redis, Temporal, Prefect,
 
 | Stage | Current status |
 |---|---|
-| Target input | Partially real — name/PDB ID only |
-| PDB validation | Not implemented |
-| PDB upload | Not implemented |
+| Target input | REAL — upload, PDB ID (RCSB), or bundled demo |
+| PDB validation | REAL — structural checks only (backend/targets/structure.py) |
+| PDB upload | REAL |
 | Chemical-space screening | MOCK |
 | SA scoring | REAL |
 | Molecular weight | REAL |
@@ -1059,7 +1059,7 @@ IMPORTANT:
 
 `10T+` is a conceptual scale label, not the number of molecules actually processed by the demo.
 
-The current seed set is only 10 molecules.
+The demo library has 40 molecules (runs use 10/25/40).
 
 ## Candidate table
 
@@ -1506,13 +1506,13 @@ A strong MVP should demonstrate:
 
 ### Strong next additions
 
-- [ ] real PDB upload
-- [ ] PDB validation
-- [ ] configurable target
-- [ ] configurable parameters
+- [x] real PDB upload
+- [x] PDB validation
+- [x] configurable target
+- [x] configurable parameters
 - [ ] retry/backoff
-- [ ] cleaner service adapter interfaces
-- [ ] artifact management
+- [x] cleaner service adapter interfaces
+- [x] artifact management (local filesystem, data/runs/)
 - [ ] improved error states
 
 ### Production-only

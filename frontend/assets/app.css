@@ -1,0 +1,26 @@
+@layer base {
+  html, body { margin: 0; padding: 0; }
+  body { overscroll-behavior: none; }
+  main > :first-child { margin-top: 0 !important; }
+  main > :last-child { margin-bottom: 0 !important; }
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #bcc9c6; border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* The sidebar is fixed at >=1024px and collapses out of the way below it. */
+@media (max-width: 1023px) {
+  #app-sidebar { display: none; }
+}
+
+[hidden] { display: none !important; }
+
+.drop-active {
+  outline: 2px dashed #00685f;
+  outline-offset: -6px;
+  background-color: #eaedff;
+}
+
+/* 2D depictions returned by RDKit as inline SVG */
+.structure-cell svg { width: 100%; height: 100%; }

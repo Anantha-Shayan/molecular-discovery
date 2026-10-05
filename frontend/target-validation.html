@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Target Validation — Molecular Discovery Platform</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="assets/tokens.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.5.5/3Dmol-min.js"></script>
+<link href="assets/app.css" rel="stylesheet"/>
+</head>
+<body class="bg-background font-body-default text-on-surface antialiased">
+
+<header id="app-header" class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest border-b border-surface-container-high"></header>
+<aside id="app-sidebar" class="fixed left-0 top-[92px] bottom-0 w-64 bg-surface-container-lowest border-r border-surface-container-high z-40 flex flex-col justify-between overflow-y-auto"></aside>
+
+<div class="lg:pl-64">
+<main class="relative pt-[92px] w-full min-h-screen">
+
+  <!-- Step rail -->
+  <div class="w-full bg-surface-container-low px-space-lg py-space-sm shadow-sm flex flex-wrap items-center justify-between gap-space-md">
+    <div class="flex items-center gap-space-md">
+      <div class="flex items-center gap-space-xs font-mono-data text-mono-data text-outline">
+        <a class="text-on-surface-variant font-medium hover:text-on-surface" href="discoveries.html">Discoveries</a>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <a class="text-on-surface-variant font-medium hover:text-on-surface" href="new-discovery.html">New Discovery</a>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span class="text-primary font-semibold">Step 2: Target Validation</span>
+      </div>
+      <div class="h-4 w-px bg-surface-container-high hidden sm:block"></div>
+      <div id="gate-chip" class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-mono-sm text-mono-sm font-medium">
+        <span class="w-1.5 h-1.5 rounded-full bg-outline"></span> Loading…
+      </div>
+    </div>
+    <div class="flex items-center gap-space-lg">
+      <div class="flex items-center gap-space-sm font-mono-sm text-mono-sm">
+        <span class="text-outline">STAGE:</span><span class="text-on-surface font-semibold">02 / 03</span>
+      </div>
+      <div class="flex items-center gap-1 w-28 h-1.5 bg-surface-container-high rounded overflow-hidden">
+        <div class="h-full bg-primary w-2/3"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="load-error" hidden class="px-space-lg py-space-lg max-w-[1720px] mx-auto"></div>
+
+  <div id="content" hidden class="w-full px-space-lg py-space-md max-w-[1720px] mx-auto space-y-space-md">
+
+    <!-- Summary bar -->
+    <div class="bg-surface-container-lowest p-space-md rounded shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+      <div class="space-y-0.5">
+        <div class="flex items-center gap-space-sm flex-wrap">
+          <h1 class="font-headline-md text-headline-md text-on-surface tracking-tight">Review Protein Target</h1>
+          <span id="gate-badge" class="font-mono-sm text-mono-sm bg-surface-container px-2 py-0.5 rounded text-primary font-medium tracking-wide">—</span>
+        </div>
+        <p class="font-body-default text-body-default text-on-surface-variant max-w-2xl">
+          Structural coordinates, chains and input validation checks read from
+          your file, prior to pipeline configuration.
+        </p>
+      </div>
+      <div class="flex items-center gap-space-md bg-surface-container-low px-space-md py-space-sm rounded flex-wrap">
+        <div class="flex flex-col">
+          <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Macromolecule</span>
+          <span id="sum-name" class="font-headline-sm text-headline-sm text-on-surface font-semibold tracking-tight">—</span>
+        </div>
+        <div class="h-8 w-px bg-surface-container-high"></div>
+        <div class="flex flex-col">
+          <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">PDB Reference</span>
+          <span id="sum-pdb" class="font-mono-data text-mono-data text-on-surface font-semibold bg-surface px-1.5 py-0.5 rounded">—</span>
+        </div>
+        <div class="h-8 w-px bg-surface-container-high"></div>
+        <div id="sum-status" class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-secondary-container/50 text-on-secondary-container font-mono-sm text-mono-sm font-semibold">
+          <span class="material-symbols-outlined text-[16px] text-secondary">verified</span>
+          Structure Validated
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-space-md items-start">
+
+      <!-- Viewer -->
+      <div class="xl:col-span-8 flex flex-col gap-space-md">
+        <div class="bg-surface-container-lowest rounded shadow-sm overflow-hidden flex flex-col relative">
+          <div class="bg-surface-container-low px-space-md py-space-xs flex items-center justify-between flex-wrap gap-space-xs">
+            <div class="flex items-center gap-space-md font-mono-sm text-mono-sm">
+              <div class="flex items-center gap-space-xs text-on-surface">
+                <span class="material-symbols-outlined text-[16px] text-primary">view_in_ar</span>
+                <span class="font-semibold">3Dmol.js viewer</span>
+              </div>
+              <span class="text-outline">|</span>
+              <span id="viewer-chain" class="text-on-surface-variant font-medium">—</span>
+              <span class="text-outline hidden sm:inline">|</span>
+              <span id="viewer-method" class="text-outline hidden sm:inline">—</span>
+            </div>
+            <div class="flex items-center gap-space-xs">
+              <button data-style="cartoon" class="viewer-style px-space-sm py-space-2xs rounded bg-surface-container text-on-surface font-mono-sm text-mono-sm">Cartoon</button>
+              <button data-style="stick" class="viewer-style px-space-sm py-space-2xs rounded text-on-surface-variant font-mono-sm text-mono-sm hover:bg-surface-container">Sticks</button>
+              <button data-style="sphere" class="viewer-style px-space-sm py-space-2xs rounded text-on-surface-variant font-mono-sm text-mono-sm hover:bg-surface-container">Spheres</button>
+            </div>
+          </div>
+
+          <div class="relative w-full h-[520px] bg-slate-950">
+            <div id="viewer" class="absolute inset-0"></div>
+            <div id="viewer-status"
+                 class="absolute inset-0 flex items-center justify-center font-mono-sm text-mono-sm text-slate-400 pointer-events-none">
+              Loading structure…
+            </div>
+            <div class="absolute bottom-2 right-space-md font-mono-sm text-mono-sm text-slate-400 bg-slate-950/75 px-2.5 py-1 rounded backdrop-blur">
+              Rendering your uploaded structure · drag to rotate
+            </div>
+          </div>
+
+          <div class="bg-surface-container-low px-space-md py-space-sm flex flex-wrap items-center justify-between gap-space-sm">
+            <div class="flex items-center gap-space-sm font-mono-sm text-mono-sm flex-wrap">
+              <span class="text-outline uppercase">Chain selection:</span>
+              <select id="chain-select"
+                      class="font-mono-data text-mono-data bg-surface-container-lowest text-on-surface rounded px-space-sm py-space-2xs focus:outline-none"></select>
+              <span class="text-outline-variant">•</span>
+              <span class="text-outline uppercase">Non-solvent HETATM:</span>
+              <span id="ligand-list" class="text-on-surface-variant font-mono-data">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Artifact -->
+        <div class="bg-surface-container-lowest p-space-md rounded shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+          <div class="flex items-start gap-space-md">
+            <div class="w-10 h-10 rounded bg-surface-container-low flex items-center justify-center text-primary shrink-0">
+              <span class="material-symbols-outlined text-[24px]">folder_zip</span>
+            </div>
+            <div class="space-y-1">
+              <div class="flex items-center gap-space-sm flex-wrap">
+                <span id="artifact-name" class="font-mono-data text-body-default font-semibold text-on-surface">—</span>
+                <span id="artifact-size" class="font-mono-sm text-mono-sm text-outline">—</span>
+                <span id="artifact-format" class="font-mono-sm text-mono-sm bg-surface-container px-1.5 py-0.5 rounded text-on-surface-variant">—</span>
+                <span class="font-mono-sm text-mono-sm text-secondary font-medium flex items-center gap-0.5">
+                  <span class="material-symbols-outlined text-[14px]">check</span>
+                  sha256: <span id="artifact-checksum">—</span>
+                </span>
+              </div>
+              <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                Stored as a target artifact and copied into the run directory when
+                a discovery job starts.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-space-sm shrink-0">
+            <a id="view-source" target="_blank" rel="noopener"
+               class="px-space-md py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-body-default text-body-default transition-colors flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px]">terminal</span>
+              View Source
+            </a>
+            <a href="new-discovery.html"
+               class="px-space-md py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-body-default text-body-default transition-colors flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px]">sync_alt</span>
+              Replace Structure
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metadata + checks -->
+      <div class="xl:col-span-4 flex flex-col gap-space-md">
+        <div class="bg-surface-container-lowest rounded shadow-sm overflow-hidden">
+          <div class="bg-surface-container-low px-space-md py-space-sm flex items-center justify-between">
+            <span class="font-headline-sm text-headline-sm text-on-surface">Structural Metadata</span>
+            <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Read from file</span>
+          </div>
+          <div id="metadata-rows" class="divide-y divide-surface-container-high/60"></div>
+        </div>
+
+        <div class="bg-surface-container-lowest rounded shadow-sm overflow-hidden">
+          <div class="bg-surface-container-low px-space-md py-space-sm flex items-center justify-between">
+            <span class="font-headline-sm text-headline-sm text-on-surface">Input Validation Checks</span>
+            <span id="checks-score" class="font-mono-sm text-mono-sm px-2 py-0.5 rounded bg-secondary-container/60 text-on-secondary-container font-semibold">—</span>
+          </div>
+          <div id="checks-list" class="p-space-md space-y-space-sm"></div>
+        </div>
+
+        <div class="bg-surface-container-low p-space-md rounded border-l-2 border-primary space-y-1 shadow-sm">
+          <div class="flex items-center gap-space-xs text-primary font-mono-sm text-mono-sm font-semibold">
+            <span class="material-symbols-outlined text-[16px]">info</span>
+            VALIDATION SCOPE
+          </div>
+          <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+            These checks confirm that the file is readable and contains usable
+            atomic coordinates, chains and residues. They do not assess pocket
+            tractability, druggability, or suitability for docking — this is
+            structural input validation only.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="bg-surface-container-lowest px-space-lg py-space-md rounded shadow-sm flex flex-col sm:flex-row items-center justify-between gap-space-md">
+      <a href="new-discovery.html"
+         class="px-space-md py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-body-default text-body-default transition-colors flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        Change Target
+      </a>
+      <div class="flex items-center gap-space-md w-full sm:w-auto justify-end">
+        <span class="font-mono-sm text-mono-sm text-outline hidden md:inline">
+          Target saved · no run started yet
+        </span>
+        <a id="continue-btn" href="#"
+           class="px-space-xl py-2 rounded bg-primary hover:bg-primary-container text-on-primary font-headline-sm text-headline-sm transition-all shadow hover:shadow-md flex items-center justify-center gap-2 w-full sm:w-auto">
+          <span>Continue to Configuration</span>
+          <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script src="assets/app.js"></script>
+<script>
+  const targetId = params.get("target");
+  let viewer = null;
+  let currentStyle = "cartoon";
+  let structureLoaded = false;
+
+  function metadataRow(label, value, sub) {
+    return `
+      <div class="px-space-md py-2.5 flex items-center justify-between gap-space-sm text-body-sm">
+        <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider shrink-0">${label}</span>
+        <div class="text-right min-w-0">
+          <span class="font-mono-data text-mono-data text-on-surface font-medium break-words">${value}</span>
+          ${sub ? `<div class="font-mono-sm text-mono-sm text-outline">${sub}</div>` : ""}
+        </div>
+      </div>`;
+  }
+
+  function renderMetadata(target) {
+    const chains = target.chains || [];
+    const selected = chains.find((c) => c.chain_id === target.selected_chain) || chains[0];
+    const SOURCE = { demo: "Demo fixture (bundled)", upload: "Uploaded file", pdb_id: "Fetched from RCSB" };
+
+    const rows = [
+      metadataRow("Chains", chains.length ? chains.map((c) => c.chain_id).join(", ") : "—",
+                  selected ? `Selected: ${fmt.chainLabel(selected)}` : null),
+      metadataRow("Residues", fmt.int(target.residue_count),
+                  selected ? `${fmt.int(selected.residue_count)} in chain ${selected.chain_id}` : null),
+      metadataRow("Atoms", `${fmt.int(target.atom_count)} records`,
+                  "First conformer; altLoc duplicates excluded"),
+      metadataRow("Source", SOURCE[target.source] || target.source,
+                  target.original_filename || null),
+      metadataRow("Method", fmt.dash(target.experiment_method), null),
+      metadataRow("Resolution",
+                  fmt.resolution(target.resolution_a) || "Not stated in file", null),
+      metadataRow("Ligands / cofactors",
+                  (target.ligands && target.ligands.length) ? target.ligands.join(", ") : "None found",
+                  "Non-solvent HETATM residue names"),
+      target.title ? metadataRow("Title", target.title, null) : "",
+    ];
+    document.getElementById("metadata-rows").innerHTML = rows.join("");
+  }
+
+  function renderChecks(target) {
+    const checks = target.validation_checks || [];
+    const passed = checks.filter((c) => c.passed).length;
+    document.getElementById("checks-score").textContent = `${passed} / ${checks.length} PASS`;
+    document.getElementById("checks-list").innerHTML = checks
+      .map((check) => `
+        <div class="flex items-start gap-space-sm bg-surface-container-low/60 p-space-sm rounded">
+          <div class="w-5 h-5 rounded-full ${check.passed ? "bg-secondary-container" : "bg-error-container"} flex items-center justify-center shrink-0 mt-0.5">
+            <span class="material-symbols-outlined text-[14px] ${check.passed ? "text-secondary" : "text-error"} font-bold">
+              ${check.passed ? "check" : "close"}
+            </span>
+          </div>
+          <div class="space-y-0.5 min-w-0">
+            <div class="font-headline-sm text-body-default font-semibold text-on-surface">${check.label}</div>
+            <p class="font-mono-sm text-mono-sm text-on-surface-variant break-words">${check.detail}</p>
+          </div>
+        </div>`)
+      .join("");
+  }
+
+  function renderSummary(target) {
+    document.getElementById("sum-name").textContent = target.name;
+    document.getElementById("sum-pdb").textContent = target.pdb_id || "—";
+    const ok = target.validation_status === "PASSED";
+    document.getElementById("gate-badge").textContent = ok ? "INPUT VALIDATION // PASS" : "VALIDATION // FAILED";
+    document.getElementById("gate-chip").innerHTML = ok
+      ? '<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Structure read · ready to configure'
+      : '<span class="w-1.5 h-1.5 rounded-full bg-error"></span> Validation failed';
+    if (ok) {
+      document.getElementById("gate-chip").className =
+        "flex items-center gap-1.5 px-2 py-0.5 rounded bg-secondary-container/40 text-on-secondary-container font-mono-sm text-mono-sm font-medium";
+    }
+
+    const chain = (target.chains || []).find((c) => c.chain_id === target.selected_chain);
+    document.getElementById("viewer-chain").textContent = chain
+      ? `Chain ${fmt.chainLabel(chain)}`
+      : "—";
+    const method = [target.experiment_method, fmt.resolution(target.resolution_a)]
+      .filter(Boolean).join(" · ");
+    document.getElementById("viewer-method").textContent = method || "Method not stated in file";
+
+    document.getElementById("artifact-name").textContent =
+      target.original_filename || `${(target.pdb_id || "structure")}.pdb`;
+    document.getElementById("artifact-size").textContent = fmt.bytes(target.file_size_bytes);
+    document.getElementById("artifact-format").textContent =
+      (target.structure_format || "pdb").toUpperCase();
+    document.getElementById("artifact-checksum").textContent =
+      (target.checksum || "").slice(0, 12) || "—";
+    document.getElementById("view-source").href = `/api/targets/${target.target_id}/structure`;
+    document.getElementById("ligand-list").textContent =
+      (target.ligands && target.ligands.length) ? target.ligands.join(" · ") : "none";
+
+    const select = document.getElementById("chain-select");
+    select.innerHTML = (target.chains || [])
+      .map((c) => `<option value="${c.chain_id}" ${c.chain_id === target.selected_chain ? "selected" : ""}>
+        Chain ${c.chain_id} — ${fmt.int(c.residue_count)} residues
+      </option>`)
+      .join("");
+
+    document.getElementById("continue-btn").href =
+      `configure-review.html?target=${target.target_id}&chain=${encodeURIComponent(target.selected_chain || "")}`;
+    select.addEventListener("change", () => {
+      document.getElementById("continue-btn").href =
+        `configure-review.html?target=${target.target_id}&chain=${encodeURIComponent(select.value)}`;
+      applyStyle(currentStyle);
+    });
+  }
+
+  // --- 3D viewer: renders the user's actual structure text ---------------
+  function applyStyle(style) {
+    if (!viewer || !structureLoaded) return;
+    currentStyle = style;
+    const chain = document.getElementById("chain-select").value;
+    viewer.setStyle({}, {});
+    const base =
+      style === "cartoon" ? { cartoon: { color: "spectrum" } }
+      : style === "stick" ? { stick: { radius: 0.15 } }
+      : { sphere: { scale: 0.3 } };
+    viewer.setStyle({ chain }, base);
+    // Non-solvent heteroatoms shown as sticks so bound ligands are visible.
+    viewer.setStyle({ hetflag: true, not: { resn: ["HOH", "DOD", "WAT"] } },
+                    { stick: { radius: 0.18, colorscheme: "greenCarbon" } });
+    viewer.render();
+
+    document.querySelectorAll(".viewer-style").forEach((button) => {
+      const on = button.dataset.style === style;
+      button.classList.toggle("bg-surface-container", on);
+      button.classList.toggle("text-on-surface", on);
+      button.classList.toggle("text-on-surface-variant", !on);
+    });
+  }
+
+  async function loadViewer(target) {
+    const status = document.getElementById("viewer-status");
+    if (typeof $3Dmol === "undefined") {
+      status.textContent = "3D viewer library unavailable (offline) — metadata below is unaffected.";
+      return;
+    }
+    try {
+      const text = await API.structure(target.target_id);
+      viewer = $3Dmol.createViewer(document.getElementById("viewer"), {
+        backgroundColor: "#020617",
+      });
+      viewer.addModel(text, target.structure_format === "mmcif" ? "cif" : "pdb");
+      structureLoaded = true;
+      applyStyle("cartoon");
+      viewer.zoomTo();
+      viewer.render();
+      status.hidden = true;
+    } catch (error) {
+      status.textContent = `Could not render structure: ${error.message}`;
+    }
+  }
+
+  document.querySelectorAll(".viewer-style").forEach((button) =>
+    button.addEventListener("click", () => applyStyle(button.dataset.style))
+  );
+
+  (async function init() {
+    Shell.render({
+      active: "validation",
+      breadcrumb: [
+        { label: "Discoveries", href: "discoveries.html" },
+        { label: "New Discovery", href: "new-discovery.html" },
+        { label: "Target Validation" },
+      ],
+    });
+    Shell.loadEngines();
+
+    if (!targetId) {
+      showError("load-error", "No target selected. Start from New Discovery.");
+      return;
+    }
+    try {
+      const target = await API.target(targetId);
+      renderSummary(target);
+      renderMetadata(target);
+      renderChecks(target);
+      document.getElementById("content").hidden = false;
+      Shell.render({
+        active: "validation",
+        breadcrumb: [
+          { label: "Discoveries", href: "discoveries.html" },
+          { label: "New Discovery", href: "new-discovery.html" },
+          { label: "Target Validation" },
+        ],
+        context: [
+          { label: "TARGET", value: `${target.name}${target.pdb_id ? ` (${target.pdb_id})` : ""}` },
+          ...(target.resolution_a ? [{ label: "RESOLUTION", value: fmt.resolution(target.resolution_a) }] : []),
+        ],
+      });
+      Shell.loadEngines();
+      loadViewer(target);
+    } catch (error) {
+      showError("load-error", error.message, error.checks);
+    }
+  })();
+</script>
+</body>
+</html>

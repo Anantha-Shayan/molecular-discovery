@@ -3,3 +3,8 @@ uvicorn>=0.54
 sqlalchemy>=2.1
 pydantic>=2.13
 rdkit>=2026.3
+python-multipart>=0.0.9   # multipart/form-data parsing for PDB upload
+
+# Tests
+pytest>=8.0
+httpx>=0.27               # required by fastapi.testclient

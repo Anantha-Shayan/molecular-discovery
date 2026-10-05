@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-container":"#eaedff","tertiary":"#006860","on-secondary-fixed":"#002114","secondary-container":"#82f5c1","surface-bright":"#faf8ff","on-primary":"#ffffff","secondary-fixed":"#85f8c4","inverse-on-surface":"#eef0ff","inverse-surface":"#283044","secondary":"#006c4a","on-surface":"#131b2e","on-tertiary-fixed-variant":"#00504a","primary-fixed":"#89f5e7","primary":"#00685f","tertiary-fixed":"#9cf2e8","surface-container-high":"#e2e7ff","surface-tint":"#006a61","surface-container-low":"#f2f3ff","outline":"#6d7a77","surface-variant":"#dae2fd","on-error":"#ffffff","surface-container-highest":"#dae2fd","on-tertiary-container":"#f3fffc","background":"#faf8ff","on-background":"#131b2e","on-tertiary":"#ffffff","surface-dim":"#d2d9f4","error":"#ba1a1a","on-surface-variant":"#3d4947","on-secondary":"#ffffff","primary-fixed-dim":"#6bd8cb","surface":"#faf8ff","on-secondary-container":"#00714e","on-secondary-fixed-variant":"#005137","on-primary-fixed":"#00201d","on-primary-fixed-variant":"#005049","primary-container":"#008378","outline-variant":"#bcc9c6","secondary-fixed-dim":"#68dba9","on-primary-container":"#f4fffc","error-container":"#ffdad6","surface-container-lowest":"#ffffff","inverse-primary":"#6bd8cb","tertiary-fixed-dim":"#80d5cb","on-tertiary-fixed":"#00201d","tertiary-container":"#248279","on-error-container":"#93000a"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-xs":"0.25rem","space-2xs":"0.125rem","space-lg":"1rem","gutter-dense":"0.375rem","space-sm":"0.5rem","space-xl":"1.5rem","margin":"1rem","gutter":"0.75rem","space-md":"0.75rem"},fontFamily:{"headline-lg":["Space Grotesk"],"headline-sm":["Space Grotesk"],"mono-data":["JetBrains Mono"],"mono-sm":["JetBrains Mono"],"headline-md":["Space Grotesk"],"label-caps":["JetBrains Mono"],"body-sm":["Geist"],"display":["Space Grotesk"],"body-default":["Geist"],"body-lg":["Geist"]},fontSize:{"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"headline-sm":["15px",{"lineHeight":"20px","letterSpacing":"-0.005em","fontWeight":"600"}],"mono-data":["12px",{"lineHeight":"16px","letterSpacing":"-0.01em","fontWeight":"500"}],"mono-sm":["11px",{"lineHeight":"14px","fontWeight":"400"}],"headline-md":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-caps":["10px",{"lineHeight":"12px","letterSpacing":"0.06em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"display":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"600"}],"body-default":["13px",{"lineHeight":"18px","fontWeight":"400"}],"body-lg":["14px",{"lineHeight":"20px","fontWeight":"400"}]}}}}</script></head><body class="bg-background font-body-default text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest border-b border-surface-container-high"><div class="h-14 w-full px-space-lg flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-sm"><img alt="Brand logo. - Primary color: #0d9488
+- Font: spaceGrotesk
+- Mode: light
+- Roundness: rounded-sm
+" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WTWd21VvSlw3eWFGXy4kXSJudNq9ZnGzNTmqxDoIWB3wjp9DqWNvrD9ZBphXF0NnUxmfoFKBfuYWu9w30Os3-C6q4cVpd75Vuc1pu4LrDBQqOl868Y2Bza77mHNPryWDFU_RIeJQyj_YHGn8qkbW-_OEOqtsxomt71Y2G9SKahhC5_n_dxaw66-tdY2zJM3DnnpzNYlyHwEGXISaRiU8E1gf2gSSxOd21AIde9jiG44FmOsPN3FYMD2S1q"/><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">Molecular Discovery Platform</span></div><nav class="hidden xl:flex items-center gap-space-xs" data-active-classes="bg-surface-container-high text-primary font-semibold"><a aria-current="page" class="px-space-md py-space-xs rounded transition-colors bg-surface-container-high text-primary font-semibold" data-path="discoveries" href="#">Discoveries</a><a class="px-space-md py-space-xs rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container text-body-sm font-body-sm transition-colors" data-path="projects" href="#">Projects</a><a class="px-space-md py-space-xs rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container text-body-sm font-body-sm transition-colors" data-path="molecules" href="#">Molecules</a><a class="px-space-md py-space-xs rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container text-body-sm font-body-sm transition-colors" data-path="jobs" href="#">Jobs</a><a class="px-space-md py-space-xs rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container text-body-sm font-body-sm transition-colors" data-path="knowledge" href="#">Knowledge</a></nav></div><div class="flex-1 max-w-md mx-space-md"><div class="relative flex items-center w-full"><span class="material-symbols-outlined absolute left-space-sm text-[16px] text-outline pointer-events-none">search</span><input class="w-full h-8 pl-8 pr-space-sm bg-surface-container-low border border-surface-container-high rounded text-body-sm font-mono-data text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:bg-surface-container-lowest transition-colors" placeholder="Search protein, SMILES, PDB ID..." type="text"/></div></div><div class="flex items-center gap-space-md"><div class="hidden sm:flex items-center gap-space-xs px-space-sm py-space-2xs bg-surface-container-low rounded border border-surface-container-high"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span><span class="font-mono-sm text-mono-sm text-on-surface-variant">GPU Node: 48/64 Active</span></div><button class="w-8 h-8 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors relative" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary"></span></button><div class="flex items-center gap-space-sm pl-space-xs border-l border-surface-container-high"><div class="text-right hidden md:block"><div class="font-headline-sm text-body-sm leading-tight text-on-surface">Dr. Elena Vance</div><div class="font-mono-sm text-mono-sm text-outline">Computational Chemist</div></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center cursor-pointer"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div><div class="h-9 w-full px-space-lg bg-surface border-t border-surface-container-high flex items-center justify-between"><div class="flex items-center gap-space-sm"><nav class="flex items-center gap-space-xs font-mono-data text-mono-data"><span class="text-outline">WORKSPACE</span><span class="material-symbols-outlined text-[12px] text-outline-variant">chevron_right</span><span class="text-outline hover:text-on-surface cursor-pointer">Discoveries</span><span class="material-symbols-outlined text-[12px] text-outline-variant">chevron_right</span><span class="text-primary font-semibold">New Discovery Flow</span></nav></div><div class="flex items-center gap-space-lg font-mono-sm text-mono-sm"><div class="flex items-center gap-space-xs"><span class="text-outline">TARGET:</span><span class="text-on-surface font-semibold">CDK2 (PDB 1HCK)</span></div><div class="hidden lg:flex items-center gap-space-xs"><span class="text-outline">RESOLUTION:</span><span class="text-on-surface">1.80 Å</span></div><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-secondary-container"></span><span class="text-on-surface-variant">Telemetry: Synchronized</span></div></div></div></header><aside class="fixed left-0 top-[92px] bottom-0 w-64 bg-surface-container-lowest border-r border-surface-container-high z-40 flex flex-col justify-between overflow-y-auto"><div class="p-space-md"><div class="font-label-caps text-label-caps text-outline uppercase tracking-wider mb-space-sm px-space-xs">Screening Pipeline</div><nav class="space-y-space-2xs" data-active-classes="bg-surface-container-high text-primary font-semibold"><a aria-current="page" class="flex items-center justify-between px-space-sm py-space-xs rounded transition-colors bg-surface-container-high text-primary font-semibold" data-path="discoveries" href="#"><span class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[16px]">biotech</span>Target Intake</span><span class="font-mono-sm text-mono-sm text-outline">01</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-body-sm font-body-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="target-docking" href="#"><span class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[16px]">token</span>Ensemble Docking</span><span class="font-mono-sm text-mono-sm text-outline">02</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-body-sm font-body-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="pharmacophore-modeler" href="#"><span class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[16px]">hub</span>Pharmacophore</span><span class="font-mono-sm text-mono-sm text-outline">03</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-body-sm font-body-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="admet-profiler" href="#"><span class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[16px]">analytics</span>ADMET Profiler</span><span class="font-mono-sm text-mono-sm text-outline">04</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-body-sm font-body-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="lead-optimization" href="#"><span class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[16px]">science</span>Lead Candidates</span><span class="font-mono-sm text-mono-sm text-outline">05</span></a></nav><div class="mt-space-lg font-label-caps text-label-caps text-outline uppercase tracking-wider mb-space-sm px-space-xs">Active Assays</div><div class="space-y-space-xs px-space-xs"><div class="p-space-xs rounded bg-surface-container-low border border-surface-container-high"><div class="flex items-center justify-between"><span class="font-mono-sm text-mono-sm text-on-surface">Job #D-8492</span><span class="font-mono-sm text-mono-sm text-secondary font-medium">Running</span></div><div class="w-full bg-surface-container-high h-1 rounded mt-space-2xs overflow-hidden"><div class="bg-primary h-full w-[64%]"></div></div><div class="flex justify-between font-mono-sm text-mono-sm text-outline mt-space-2xs"><span>MC Sampling</span><span>64%</span></div></div></div></div><div class="p-space-md border-t border-surface-container-high bg-surface-container-low"><div class="flex items-center justify-between font-mono-sm text-mono-sm text-outline mb-space-2xs"><span>MPI Workers</span><span>128 Threads</span></div><div class="flex items-center justify-between font-mono-sm text-mono-sm text-outline"><span>Memory</span><span>412 GB / 512 GB</span></div></div></aside><div class="pl-64"><main class="relative pt-[92px] w-full min-h-screen bg-background"><div class="flex flex-col w-full">
+<div class="w-full bg-surface-container-low px-space-lg py-space-sm flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-mono-data text-mono-data text-outline">RUN STAGING</span>
+<span class="text-outline-variant font-mono-data">/</span>
+<span class="font-mono-data text-mono-data text-on-surface-variant">KRAS-G12D</span>
+<span class="text-outline-variant font-mono-data">/</span>
+<span class="font-headline-sm text-headline-sm text-primary flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+        Step 3: Configure &amp; Review Before Start
+      </span>
+</div>
+<div class="flex items-center gap-space-md font-mono-sm text-mono-sm">
+<div class="flex items-center gap-space-xs px-space-sm py-space-2xs bg-surface-container rounded">
+<span class="text-outline uppercase">Target Context:</span>
+<span class="font-semibold text-on-surface">KRAS G12D (PDB: 8AZX)</span>
+</div>
+<div class="flex items-center gap-space-xs px-space-sm py-space-2xs bg-secondary-container/30 text-secondary rounded">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span class="font-medium">Ready to Launch</span>
+</div>
+</div>
+</div>
+<div class="px-space-lg py-space-md bg-surface-container-lowest">
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
+<div>
+<div class="flex items-center gap-space-xs text-outline font-label-caps text-label-caps uppercase tracking-wider mb-space-2xs">
+<span>Simulation Topology Specification</span>
+<span>·</span>
+<span>Version 3.4.1-r2</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Configure Discovery</h1>
+<p class="font-body-default text-body-default text-on-surface-variant mt-space-2xs max-w-3xl">
+          Define the computational workflow, filtering parameters, and execution criteria for this run. Parameters locked here establish the immutable provenance baseline for generated molecular leads.
+        </p>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="h-8 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm rounded flex items-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">history</span>
+          Recall Preset
+        </button>
+<button class="h-8 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm rounded flex items-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">bookmark_add</span>
+          Save as Run Template
+        </button>
+</div>
+</div>
+<div class="mt-space-md grid grid-cols-1 md:grid-cols-4 gap-space-sm p-space-sm bg-surface-container-low rounded">
+<div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
+<span class="material-symbols-outlined text-primary text-[20px]">target</span>
+<div>
+<div class="font-label-caps text-label-caps text-outline uppercase">Active Target</div>
+<div class="font-mono-data text-mono-data text-on-surface font-semibold">KRAS G12D · Chain A</div>
+</div>
+</div>
+<div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
+<span class="material-symbols-outlined text-secondary text-[20px]">verified</span>
+<div>
+<div class="font-label-caps text-label-caps text-outline uppercase">Structural Integrity</div>
+<div class="font-mono-data text-mono-data text-secondary font-semibold">Verified · PDB 8AZX (1.62 Å)</div>
+</div>
+</div>
+<div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
+<span class="material-symbols-outlined text-tertiary text-[20px]">view_in_ar</span>
+<div>
+<div class="font-label-caps text-label-caps text-outline uppercase">Binding Pocket</div>
+<div class="font-mono-data text-mono-data text-on-surface font-semibold">Switch-II Cavity (482 Å³)</div>
+</div>
+</div>
+<div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
+<span class="material-symbols-outlined text-outline text-[20px]">memory</span>
+<div>
+<div class="font-label-caps text-label-caps text-outline uppercase">Target Residues</div>
+<div class="font-mono-data text-mono-data text-on-surface font-semibold">188 aa · Mutated Asp12</div>
+</div>
+</div>
+</div>
+</div>
+<div class="p-space-lg grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
+<div class="xl:col-span-7 space-y-space-lg">
+<div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+<div class="flex items-center justify-between pb-space-sm">
+<div>
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Sequential Protocol</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Scientific Pipeline Stages</h2>
+</div>
+<span class="font-mono-sm text-mono-sm px-space-sm py-space-2xs bg-surface-container text-on-surface-variant rounded">6 Stages Configured</span>
+</div>
+<div class="space-y-space-sm mt-space-sm">
+<div class="p-space-sm bg-surface-container-low hover:bg-surface-container/70 rounded transition-colors">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm">
+<span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">01</span>
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Chemical Space Screening</span>
+<span class="font-mono-sm text-mono-sm text-outline px-space-xs py-space-2xs bg-surface-container-lowest rounded">In Silico Library</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                    Initial ligand ensemble expansion against sub-pocket coordinates using targeted chemical space screening heuristics.
+                  </p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+<input checked="" class="sr-only peer" disabled="" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="mt-space-sm pt-space-xs grid grid-cols-1 md:grid-cols-2 gap-space-sm">
+<div>
+<label class="block font-mono-sm text-mono-sm text-outline mb-space-2xs">SCREENING MODE</label>
+<select class="w-full h-8 px-space-sm bg-surface-container-lowest font-mono-data text-mono-data text-on-surface rounded focus:outline-none focus:bg-surface-bright">
+<option selected="">Ultra-Large Virtual Screening</option>
+<option>Diversity-Oriented Subsampling</option>
+<option>Fragment-Guided Expansion</option>
+</select>
+</div>
+<div>
+<label class="block font-mono-sm text-mono-sm text-outline mb-space-2xs">DEMO CANDIDATE LIBRARY</label>
+<select class="w-full h-8 px-space-sm bg-surface-container-lowest font-mono-data text-mono-data text-on-surface rounded focus:outline-none focus:bg-surface-bright">
+<option selected="">10 candidates (Benchmarking Ensemble)</option>
+<option>25 candidates (Extended Tier)</option>
+<option>50 candidates (Deep Exploration)</option>
+</select>
+</div>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container-low hover:bg-surface-container/70 rounded transition-colors">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm">
+<span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">02</span>
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Synthetic Accessibility</span>
+<span class="font-mono-sm text-mono-sm text-secondary bg-secondary-container/40 px-space-xs py-space-2xs rounded">Live RDKit</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                    Evaluates fragment complexity, stereocenter entropy, and historical synthesis pathways (Scale: 1.0 easy to 10.0 intractable).
+                  </p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-lowest p-space-sm rounded">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-outline text-[18px]">tune</span>
+<span class="font-body-sm text-body-sm text-on-surface font-medium">Cutoff Threshold (Maximum SA Score):</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<input class="w-20 h-7 text-center bg-surface-container-low font-mono-data text-mono-data text-on-surface rounded focus:outline-none focus:bg-surface-bright font-semibold" max="10.0" min="1.0" step="0.1" type="number" value="5.0"/>
+<span class="font-mono-sm text-mono-sm text-outline">/ 10.0 (Strictly ≤ 5.0 pass)</span>
+</div>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container-low hover:bg-surface-container/70 rounded transition-colors">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm">
+<span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">03</span>
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">ADMET Prediction</span>
+<span class="font-mono-sm text-mono-sm text-outline px-space-xs py-space-2xs bg-surface-container-lowest rounded">220+ Endpoints</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                    Rapid in silico filtration scoring aqueous solubility, hERG inhibition liability, blood-brain barrier permeability, and hepatic clearance.
+                  </p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between bg-surface-container-lowest p-space-sm rounded">
+<label class="flex items-center gap-space-xs cursor-pointer select-none">
+<input checked="" class="w-4 h-4 text-primary rounded bg-surface-container-low" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">Apply rigorous Lipinski &amp; Veber ADMET gates to pipeline output</span>
+</label>
+<span class="font-mono-sm text-mono-sm text-secondary font-medium">Cardiotox &amp; BBB Active</span>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container-low hover:bg-surface-container/70 rounded transition-colors">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm">
+<span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">04</span>
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Binding Affinity (Docking)</span>
+<span class="font-mono-sm text-mono-sm text-outline px-space-xs py-space-2xs bg-surface-container-lowest rounded">Grid-Ensemble</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                    Grid-based thermodynamic evaluation calculating free energy of binding (ΔG in kcal/mol) and estimated dissociation constant (K<sub>d</sub>).
+                  </p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between bg-surface-container-lowest p-space-sm rounded">
+<label class="flex items-center gap-space-xs cursor-pointer select-none">
+<input checked="" class="w-4 h-4 text-primary rounded bg-surface-container-low" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">Rank surviving candidates by predicted ΔG affinity threshold</span>
+</label>
+<span class="font-mono-sm text-mono-sm text-outline">Exhaustiveness: 32</span>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container-low hover:bg-surface-container/70 rounded transition-colors">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm">
+<span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">05</span>
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Unbinding Kinetics</span>
+<span class="font-mono-sm text-mono-sm text-outline px-space-xs py-space-2xs bg-surface-container-lowest rounded">Metadynamics</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                    Enhanced-sampling dissociation rate (k<sub>off</sub>) calculations and complex residence time (τ) projections along the unbinding coordinate.
+                  </p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface-container-lowest after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between bg-surface-container-lowest p-space-sm rounded">
+<label class="flex items-center gap-space-xs cursor-pointer select-none">
+<input checked="" class="w-4 h-4 text-primary rounded bg-surface-container-low" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">Simulate unbinding trajectories on top candidate poses</span>
+</label>
+<span class="font-mono-sm text-mono-sm text-outline">τ Target: &gt; 120s</span>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container rounded">
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm">
+<span class="font-mono-data text-mono-data text-secondary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">06</span>
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Candidate Shortlist Generation</span>
+<span class="font-mono-sm text-mono-sm text-secondary bg-surface-container-lowest px-space-xs py-space-2xs rounded">Terminal Output</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                    Automated nomination of lead candidates fulfilling all orthogonal biological, kinetic, and synthetic criteria with full pipeline provenance.
+                  </p>
+</div>
+</div>
+<span class="font-mono-sm text-mono-sm text-outline px-space-xs py-space-2xs bg-surface-container-lowest rounded">Auto-Finalized</span>
+</div>
+</div>
+</div>
+<div class="mt-space-md p-space-sm bg-surface-container-low rounded flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-outline text-[18px]">dns</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+<strong class="text-on-surface font-medium">Compute Resource Allocation:</strong> CPU + GPU clusters dynamically provisioned via Docker Swarm runtime. Node balance optimized for parallelized coordinate sampling.
+          </p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+<div class="flex items-center justify-between pb-space-sm">
+<div>
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Runtime Transparency</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Scientific Engine Environment</h3>
+</div>
+<span class="font-mono-sm text-mono-sm px-space-sm py-space-2xs bg-surface-container-high text-on-surface font-medium rounded">Hybrid Execution</span>
+</div>
+<div class="mt-space-sm overflow-hidden rounded bg-surface-container-low">
+<div class="grid grid-cols-2 px-space-sm py-space-xs bg-surface-container font-label-caps text-label-caps text-outline uppercase">
+<span>Module / Engine Subsystem</span>
+<span class="text-right">Execution Backend</span>
+</div>
+<div class="divide-y divide-surface-container-high/40 font-mono-data text-mono-data">
+<div class="grid grid-cols-2 px-space-sm py-space-xs items-center">
+<span class="text-on-surface flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                RDKit SA Scoring
+              </span>
+<div class="text-right">
+<span class="px-space-xs py-space-2xs rounded bg-secondary/10 text-secondary text-mono-sm font-semibold">REAL (RDKit Engine)</span>
+</div>
+</div>
+<div class="grid grid-cols-2 px-space-sm py-space-xs items-center">
+<span class="text-on-surface-variant">Chemical Space Screening</span>
+<div class="text-right">
+<span class="px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant text-mono-sm">DEMO ADAPTER</span>
+</div>
+</div>
+<div class="grid grid-cols-2 px-space-sm py-space-xs items-center">
+<span class="text-on-surface-variant">ADMET Prediction</span>
+<div class="text-right">
+<span class="px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant text-mono-sm">DEMO ADAPTER</span>
+</div>
+</div>
+<div class="grid grid-cols-2 px-space-sm py-space-xs items-center">
+<span class="text-on-surface-variant">Binding Affinity</span>
+<div class="text-right">
+<span class="px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant text-mono-sm">DEMO ADAPTER</span>
+</div>
+</div>
+<div class="grid grid-cols-2 px-space-sm py-space-xs items-center">
+<span class="text-on-surface-variant">Unbinding Kinetics</span>
+<div class="text-right">
+<span class="px-space-xs py-space-2xs rounded bg-surface-container text-on-surface-variant text-mono-sm">DEMO ADAPTER</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-space-sm p-space-sm bg-surface-container-low rounded text-on-surface-variant font-mono-sm text-mono-sm flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-outline text-[16px] mt-0.5">info</span>
+<span>Environment notice: Real computational scoring paired with demo adapters for simulated pipeline execution. Candidate results reflect illustrative benchmarking data.</span>
+</div>
+</div>
+</div>
+<div class="xl:col-span-5 space-y-space-lg">
+<div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+<div class="flex items-center justify-between pb-space-sm">
+<div>
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Pre-Flight Audit</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Run Specification Review</h2>
+</div>
+<span class="font-mono-data text-mono-data text-primary font-semibold bg-primary/10 px-space-sm py-space-2xs rounded">STAGE 3 / 3</span>
+</div>
+<div class="space-y-space-sm mt-space-sm font-mono-data text-mono-data">
+<div class="p-space-sm bg-surface-container-low rounded">
+<div class="font-label-caps text-label-caps text-outline uppercase mb-space-2xs">TARGET SPECIFICATION</div>
+<div class="text-on-surface font-semibold text-headline-sm">KRAS G12D (Homo sapiens)</div>
+<div class="text-outline text-mono-sm mt-space-2xs">PDB Structure: 8AZX · Monomeric Chain A (188 residues) · Switch-II Pocket</div>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded">
+<div class="font-label-caps text-label-caps text-outline uppercase mb-space-2xs">ASSIGNED RUN IDENTIFIER</div>
+<div class="text-primary font-semibold flex items-center justify-between">
+<span>RUN-2025-0894-KRAS-G12D</span>
+<button class="text-outline hover:text-on-surface text-mono-sm flex items-center gap-space-2xs" type="button">
+<span class="material-symbols-outlined text-[14px]">content_copy</span> Copy
+              </button>
+</div>
+<div class="text-outline text-mono-sm mt-space-2xs">Ephemeral runtime ledger initialized on cluster worker #08</div>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded">
+<div class="font-label-caps text-label-caps text-outline uppercase mb-space-2xs">PIPELINE FUNNEL FLOW</div>
+<div class="mt-space-xs space-y-space-xs font-mono-sm text-mono-sm">
+<div class="flex items-center justify-between bg-surface-container-lowest p-space-xs rounded">
+<span class="text-on-surface font-medium">1. Chemical Space</span>
+<span class="text-outline">10 initial candidates</span>
+</div>
+<div class="flex justify-center text-outline">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container-lowest p-space-xs rounded">
+<span class="text-on-surface font-medium">2. SA Filter</span>
+<span class="text-secondary font-medium">≤ 5.0 RDKit Score</span>
+</div>
+<div class="flex justify-center text-outline">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container-lowest p-space-xs rounded">
+<span class="text-on-surface font-medium">3. ADMET In Silico</span>
+<span class="text-outline">Solubility, hERG, BBB Filter</span>
+</div>
+<div class="flex justify-center text-outline">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container-lowest p-space-xs rounded">
+<span class="text-on-surface font-medium">4. Binding Affinity</span>
+<span class="text-outline">ΔG &amp; K<sub>d</sub> docking ranking</span>
+</div>
+<div class="flex justify-center text-outline">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container-lowest p-space-xs rounded">
+<span class="text-on-surface font-medium">5. Unbinding Kinetics</span>
+<span class="text-outline">k<sub>off</sub> &amp; residence time τ</span>
+</div>
+<div class="flex justify-center text-outline">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container p-space-xs rounded font-semibold text-primary">
+<span>6. Lead Candidates</span>
+<span>Automated Nomination</span>
+</div>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded grid grid-cols-2 gap-space-sm">
+<div>
+<div class="font-label-caps text-label-caps text-outline uppercase">ESTIMATED RUNTIME</div>
+<div class="text-on-surface font-semibold text-headline-sm mt-space-2xs">~11 minutes</div>
+<div class="text-outline text-mono-sm">Parallel GPU node</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-outline uppercase">PROJECTED OUTPUT</div>
+<div class="text-on-surface font-semibold text-headline-sm mt-space-2xs">1-3 Nominated</div>
+<div class="text-outline text-mono-sm">Verified drug-like leads</div>
+</div>
+</div>
+</div>
+<div class="mt-space-lg space-y-space-sm">
+<a class="w-full h-11 bg-primary hover:bg-primary-container text-on-primary font-headline-sm text-headline-sm rounded flex items-center justify-center gap-space-sm transition-all shadow-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">play_arrow</span>
+<span>Start Discovery Run</span>
+</a>
+<div class="grid grid-cols-2 gap-space-sm">
+<button class="h-9 px-space-sm bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm rounded flex items-center justify-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">arrow_back</span>
+<span>Back to Validation</span>
+</button>
+<button class="h-9 px-space-sm bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm rounded flex items-center justify-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">content_paste</span>
+<span>Audit Run JSON</span>
+</button>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Cluster Telemetry Preview</span>
+<span class="font-mono-sm text-mono-sm text-secondary flex items-center gap-space-2xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Cluster Online
+          </span>
+</div>
+<div class="space-y-space-xs font-mono-sm text-mono-sm">
+<div class="flex justify-between text-on-surface-variant">
+<span>Primary Node</span>
+<span class="text-on-surface font-mono-data">node-gpu-us-east-04</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>Available VRAM</span>
+<span class="text-on-surface font-mono-data">78.4 GB / 80.0 GB (NVIDIA A100)</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>Queue Priority</span>
+<span class="text-on-surface font-mono-data">High (Interactive User Session)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

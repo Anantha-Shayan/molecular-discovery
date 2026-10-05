@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Configure Discovery — Molecular Discovery Platform</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="assets/tokens.js"></script>
+<link href="assets/app.css" rel="stylesheet"/>
+</head>
+<body class="bg-background font-body-default text-on-surface antialiased">
+
+<header id="app-header" class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest border-b border-surface-container-high"></header>
+<aside id="app-sidebar" class="fixed left-0 top-[92px] bottom-0 w-64 bg-surface-container-lowest border-r border-surface-container-high z-40 flex flex-col justify-between overflow-y-auto"></aside>
+
+<div class="lg:pl-64">
+<main class="relative pt-[92px] w-full min-h-screen">
+
+  <!-- Step bar -->
+  <div class="w-full bg-surface-container-low px-space-lg py-space-sm flex flex-wrap items-center justify-between gap-space-sm">
+    <div class="flex items-center gap-space-sm">
+      <span class="font-mono-data text-mono-data text-outline">RUN STAGING</span>
+      <span class="text-outline-variant font-mono-data">/</span>
+      <span id="staging-target" class="font-mono-data text-mono-data text-on-surface-variant">—</span>
+      <span class="text-outline-variant font-mono-data">/</span>
+      <span class="font-headline-sm text-headline-sm text-primary flex items-center gap-space-xs">
+        <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+        Step 3: Configure &amp; Review Before Start
+      </span>
+    </div>
+    <div class="flex items-center gap-space-md font-mono-sm text-mono-sm">
+      <div class="flex items-center gap-space-xs px-space-sm py-space-2xs bg-secondary-container/30 text-secondary rounded">
+        <span class="material-symbols-outlined text-[14px]">check_circle</span>
+        <span class="font-medium">Target ready</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="load-error" hidden class="px-space-lg py-space-lg max-w-[1720px] mx-auto"></div>
+
+  <div id="content" hidden>
+    <!-- Header + target context -->
+    <div class="px-space-lg py-space-md bg-surface-container-lowest">
+      <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
+        <div>
+          <div class="flex items-center gap-space-xs text-outline font-label-caps text-label-caps uppercase tracking-wider mb-space-2xs">
+            <span>Run Specification</span>
+          </div>
+          <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Configure Discovery</h1>
+          <p class="font-body-default text-body-default text-on-surface-variant mt-space-2xs max-w-3xl">
+            Define the pipeline parameters for this run. Everything set here is
+            persisted with the job, so the run's configuration stays auditable.
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-space-md grid grid-cols-1 md:grid-cols-4 gap-space-sm p-space-sm bg-surface-container-low rounded">
+        <div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
+          <span class="material-symbols-outlined text-primary text-[20px]">target</span>
+          <div class="min-w-0">
+            <div class="font-label-caps text-label-caps text-outline uppercase">Active Target</div>
+            <div id="ctx-target" class="font-mono-data text-mono-data text-on-surface font-semibold truncate">—</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
+          <span class="material-symbols-outlined text-secondary text-[20px]">verified</span>
+          <div class="min-w-0">
+            <div class="font-label-caps text-label-caps text-outline uppercase">Input Validation</div>
+            <div id="ctx-validation" class="font-mono-data text-mono-data text-secondary font-semibold truncate">—</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
+          <span class="material-symbols-outlined text-tertiary text-[20px]">science</span>
+          <div class="min-w-0">
+            <div class="font-label-caps text-label-caps text-outline uppercase">Structure</div>
+            <div id="ctx-structure" class="font-mono-data text-mono-data text-on-surface font-semibold truncate">—</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
+          <span class="material-symbols-outlined text-outline text-[20px]">memory</span>
+          <div class="min-w-0">
+            <div class="font-label-caps text-label-caps text-outline uppercase">Execution</div>
+            <div class="font-mono-data text-mono-data text-on-surface font-semibold truncate">Local · in-process</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-space-lg grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
+
+      <!-- LEFT: stage configuration -->
+      <div class="xl:col-span-7 space-y-space-lg">
+        <div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+          <div class="flex items-center justify-between pb-space-sm">
+            <div>
+              <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Sequential Protocol</span>
+              <h2 class="font-headline-md text-headline-md text-on-surface">Pipeline Stages</h2>
+            </div>
+            <span class="font-mono-sm text-mono-sm px-space-sm py-space-2xs bg-surface-container text-on-surface-variant rounded">6 stages</span>
+          </div>
+
+          <div class="space-y-space-sm mt-space-sm">
+
+            <!-- 01 screening -->
+            <div class="p-space-sm bg-surface-container-low rounded">
+              <div class="flex items-start justify-between gap-space-md">
+                <div class="flex items-start gap-space-sm">
+                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">01</span>
+                  <div>
+                    <div class="flex items-center gap-space-xs flex-wrap">
+                      <span class="font-headline-sm text-headline-sm text-on-surface">Chemical Space Screening</span>
+                      <span class="font-mono-sm text-mono-sm text-on-surface-variant px-space-xs py-space-2xs bg-surface-container rounded">demo adapter</span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                      Returns a fixed demo library. No screening is performed, and
+                      the compounds are not selected for this target.
+                    </p>
+                  </div>
+                </div>
+                <span class="font-mono-sm text-mono-sm text-outline shrink-0">required</span>
+              </div>
+              <div class="mt-space-sm pt-space-xs grid grid-cols-1 md:grid-cols-2 gap-space-sm">
+                <div>
+                  <label class="block font-mono-sm text-mono-sm text-outline mb-space-2xs" for="cfg-library">DEMO CANDIDATE LIBRARY</label>
+                  <select id="cfg-library"
+                          class="w-full h-8 px-space-sm bg-surface-container-lowest font-mono-data text-mono-data text-on-surface rounded focus:outline-none">
+                    <option value="10">10 candidates</option>
+                    <option value="25" selected>25 candidates</option>
+                    <option value="40">40 candidates (full demo library)</option>
+                  </select>
+                </div>
+                <div class="flex items-end">
+                  <p class="font-mono-sm text-mono-sm text-outline">
+                    Conceptual chemical space: 10T+. This run screens the demo
+                    library only.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 02 SA -->
+            <div class="p-space-sm bg-surface-container-low rounded">
+              <div class="flex items-start justify-between gap-space-md">
+                <div class="flex items-start gap-space-sm">
+                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">02</span>
+                  <div>
+                    <div class="flex items-center gap-space-xs flex-wrap">
+                      <span class="font-headline-sm text-headline-sm text-on-surface">Synthetic Accessibility</span>
+                      <span class="font-mono-sm text-mono-sm text-secondary bg-secondary-container/40 px-space-xs py-space-2xs rounded font-semibold">real — RDKit</span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                      Ertl &amp; Schuffenhauer SAscore computed by RDKit for every
+                      candidate. Scale 1.0 (easy) to 10.0 (hard).
+                    </p>
+                  </div>
+                </div>
+                <span class="font-mono-sm text-mono-sm text-outline shrink-0">required</span>
+              </div>
+              <div class="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-lowest p-space-sm rounded">
+                <div class="flex items-center gap-space-sm">
+                  <span class="material-symbols-outlined text-outline text-[18px]">tune</span>
+                  <label class="font-body-sm text-body-sm text-on-surface font-medium" for="cfg-sa">Maximum SA score to pass:</label>
+                </div>
+                <div class="flex items-center gap-space-xs">
+                  <input id="cfg-sa" type="number" min="1.0" max="10.0" step="0.1" value="5.0"
+                         class="w-20 h-7 text-center bg-surface-container-low font-mono-data text-mono-data text-on-surface rounded focus:outline-none font-semibold"/>
+                  <span class="font-mono-sm text-mono-sm text-outline">/ 10.0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 03 ADMET -->
+            <div class="p-space-sm bg-surface-container-low rounded">
+              <div class="flex items-start justify-between gap-space-md">
+                <div class="flex items-start gap-space-sm">
+                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">03</span>
+                  <div>
+                    <div class="flex items-center gap-space-xs flex-wrap">
+                      <span class="font-headline-sm text-headline-sm text-on-surface">ADMET Prediction</span>
+                      <span class="font-mono-sm text-mono-sm text-on-surface-variant px-space-xs py-space-2xs bg-surface-container rounded">demo adapter</span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                      Produces a profile label and four illustrative values. Not a
+                      real ADMET model.
+                    </p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input id="cfg-admet" checked class="sr-only peer" type="checkbox"/>
+                  <div class="w-9 h-5 bg-surface-container-high rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+              <div class="mt-space-sm pt-space-xs flex items-center justify-between bg-surface-container-lowest p-space-sm rounded gap-space-sm">
+                <label class="flex items-center gap-space-xs cursor-pointer select-none">
+                  <input id="cfg-strict-admet" checked class="w-4 h-4 rounded bg-surface-container-low" type="checkbox"/>
+                  <span class="font-body-sm text-body-sm text-on-surface">Keep only "Favorable" candidates (uncheck to also keep "Moderate")</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 04 affinity -->
+            <div class="p-space-sm bg-surface-container-low rounded">
+              <div class="flex items-start justify-between gap-space-md">
+                <div class="flex items-start gap-space-sm">
+                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">04</span>
+                  <div>
+                    <div class="flex items-center gap-space-xs flex-wrap">
+                      <span class="font-headline-sm text-headline-sm text-on-surface">Binding Affinity</span>
+                      <span class="font-mono-sm text-mono-sm text-on-surface-variant px-space-xs py-space-2xs bg-surface-container rounded">demo adapter</span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                      Produces placeholder K<sub>d</sub> and ΔG values. No docking or
+                      scoring function is run.
+                    </p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input id="cfg-affinity" checked class="sr-only peer" type="checkbox"/>
+                  <div class="w-9 h-5 bg-surface-container-high rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+              <div class="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between bg-surface-container-lowest p-space-sm rounded gap-space-sm">
+                <label class="font-body-sm text-body-sm text-on-surface" for="cfg-shortlist">
+                  Shortlist size (keeps the lowest mocked K<sub>d</sub>):
+                </label>
+                <input id="cfg-shortlist" type="number" min="1" max="40" step="1" value="8"
+                       class="w-20 h-7 text-center bg-surface-container-low font-mono-data text-mono-data text-on-surface rounded focus:outline-none font-semibold"/>
+              </div>
+            </div>
+
+            <!-- 05 kinetics -->
+            <div class="p-space-sm bg-surface-container-low rounded">
+              <div class="flex items-start justify-between gap-space-md">
+                <div class="flex items-start gap-space-sm">
+                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">05</span>
+                  <div>
+                    <div class="flex items-center gap-space-xs flex-wrap">
+                      <span class="font-headline-sm text-headline-sm text-on-surface">Unbinding Kinetics</span>
+                      <span class="font-mono-sm text-mono-sm text-on-surface-variant px-space-xs py-space-2xs bg-surface-container rounded">demo adapter</span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                      Produces placeholder k<sub>off</sub> and residence time. No
+                      molecular dynamics is run.
+                    </p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input id="cfg-kinetics" checked class="sr-only peer" type="checkbox"/>
+                  <div class="w-9 h-5 bg-surface-container-high rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+            </div>
+
+            <!-- 06 shortlist -->
+            <div class="p-space-sm bg-surface-container rounded">
+              <div class="flex items-start justify-between gap-space-md">
+                <div class="flex items-start gap-space-sm">
+                  <span class="font-mono-data text-mono-data text-secondary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">06</span>
+                  <div>
+                    <div class="flex items-center gap-space-xs flex-wrap">
+                      <span class="font-headline-sm text-headline-sm text-on-surface">Candidate Shortlist</span>
+                      <span class="font-mono-sm text-mono-sm text-secondary bg-surface-container-lowest px-space-xs py-space-2xs rounded">terminal output</span>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                      Surviving candidates with full stage provenance and SDF export.
+                      Status buckets are presentation labels, not scientific conclusions.
+                    </p>
+                  </div>
+                </div>
+                <span class="font-mono-sm text-mono-sm text-outline px-space-xs py-space-2xs bg-surface-container-lowest rounded shrink-0">automatic</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-space-md p-space-sm bg-surface-container-low rounded flex items-start gap-space-sm">
+            <span class="material-symbols-outlined text-outline text-[18px]">dns</span>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">
+              <strong class="text-on-surface font-medium">Execution:</strong>
+              stages run sequentially in the API process as a background task,
+              writing artifacts to <code class="font-mono-sm">data/runs/{job_id}/</code>.
+              No queue, cluster or GPU pool is involved in this MVP.
+            </p>
+          </div>
+        </div>
+
+        <!-- Engine environment: rendered from /api/engines -->
+        <div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+          <div class="flex items-center justify-between pb-space-sm">
+            <div>
+              <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Runtime Transparency</span>
+              <h3 class="font-headline-sm text-headline-sm text-on-surface">Scientific Engine Environment</h3>
+            </div>
+            <span class="font-mono-sm text-mono-sm px-space-sm py-space-2xs bg-surface-container-high text-on-surface font-medium rounded">Hybrid</span>
+          </div>
+          <div class="mt-space-sm overflow-hidden rounded bg-surface-container-low">
+            <div class="grid grid-cols-2 px-space-sm py-space-xs bg-surface-container font-label-caps text-label-caps text-outline uppercase">
+              <span>Stage engine</span>
+              <span class="text-right">Execution backend</span>
+            </div>
+            <div id="engine-rows" class="divide-y divide-surface-container-high/40 font-mono-data text-mono-data"></div>
+          </div>
+          <div class="mt-space-sm p-space-sm bg-surface-container-low rounded text-on-surface-variant font-mono-sm text-mono-sm flex items-start gap-space-xs">
+            <span class="material-symbols-outlined text-outline text-[16px] mt-0.5">info</span>
+            <span>
+              Values produced by demo adapters are deterministic placeholders. They
+              are not experimental measurements or model predictions, and are
+              labelled "mocked" wherever they appear, including in exported SDF tags.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: review + launch -->
+      <div class="xl:col-span-5 space-y-space-lg">
+        <div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+          <div class="flex items-center justify-between pb-space-sm">
+            <div>
+              <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Pre-flight</span>
+              <h2 class="font-headline-md text-headline-md text-on-surface">Run Specification Review</h2>
+            </div>
+            <span class="font-mono-data text-mono-data text-primary font-semibold bg-primary/10 px-space-sm py-space-2xs rounded">STEP 3 / 3</span>
+          </div>
+
+          <div class="space-y-space-sm mt-space-sm font-mono-data text-mono-data">
+            <div class="p-space-sm bg-surface-container-low rounded">
+              <div class="font-label-caps text-label-caps text-outline uppercase mb-space-2xs">TARGET</div>
+              <div id="review-target" class="text-on-surface font-semibold text-headline-sm">—</div>
+              <div id="review-target-sub" class="text-outline text-mono-sm mt-space-2xs">—</div>
+            </div>
+
+            <div class="p-space-sm bg-surface-container-low rounded">
+              <div class="font-label-caps text-label-caps text-outline uppercase mb-space-2xs">PIPELINE &amp; CONFIGURATION</div>
+              <div id="review-flow" class="mt-space-xs space-y-space-xs font-mono-sm text-mono-sm"></div>
+            </div>
+
+            <div class="p-space-sm bg-surface-container-low rounded">
+              <div class="font-label-caps text-label-caps text-outline uppercase mb-space-2xs">ENVIRONMENT</div>
+              <div class="space-y-space-2xs font-mono-sm text-mono-sm text-on-surface-variant">
+                <div class="flex justify-between"><span class="text-outline">Real engines</span><span id="review-real">—</span></div>
+                <div class="flex justify-between"><span class="text-outline">Demo adapters</span><span id="review-mocked">—</span></div>
+                <div class="flex justify-between"><span class="text-outline">Execution</span><span>Local background task</span></div>
+                <div class="flex justify-between"><span class="text-outline">Artifacts</span><span>data/runs/{job_id}/</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-space-lg space-y-space-sm">
+            <div id="start-error" hidden></div>
+            <button id="start-btn" type="button"
+                    class="w-full h-11 bg-primary hover:bg-primary-container text-on-primary font-headline-sm text-headline-sm rounded flex items-center justify-center gap-space-sm transition-all shadow-sm">
+              <span class="material-symbols-outlined text-[20px]">play_arrow</span>
+              <span id="start-label">Start Discovery</span>
+            </button>
+            <p class="font-mono-sm text-mono-sm text-outline text-center">
+              Creates a job and begins executing the pipeline immediately.
+            </p>
+            <div class="grid grid-cols-2 gap-space-sm">
+              <a id="back-btn" href="#"
+                 class="h-9 px-space-sm bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm rounded flex items-center justify-center gap-space-xs transition-colors">
+                <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+                <span>Back to Validation</span>
+              </a>
+              <button id="json-btn" type="button"
+                      class="h-9 px-space-sm bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm rounded flex items-center justify-center gap-space-xs transition-colors">
+                <span class="material-symbols-outlined text-[16px]">content_paste</span>
+                <span>Show Run JSON</span>
+              </button>
+            </div>
+            <pre id="json-preview" hidden class="p-space-sm bg-surface-container-low rounded font-mono-sm text-mono-sm text-on-surface-variant overflow-x-auto"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script src="assets/app.js"></script>
+<script>
+  const targetId = params.get("target");
+  const chainParam = params.get("chain");
+  let target = null;
+
+  function readConfig() {
+    return {
+      target_id: targetId,
+      selected_chain: chainParam || (target && target.selected_chain) || null,
+      library_limit: Number(document.getElementById("cfg-library").value),
+      sa_threshold: Number(document.getElementById("cfg-sa").value),
+      enable_admet: document.getElementById("cfg-admet").checked,
+      enable_affinity: document.getElementById("cfg-affinity").checked,
+      enable_kinetics: document.getElementById("cfg-kinetics").checked,
+      strict_admet_gate: document.getElementById("cfg-strict-admet").checked,
+      affinity_shortlist: Number(document.getElementById("cfg-shortlist").value),
+    };
+  }
+
+  function flowRow(label, value, muted) {
+    return `
+      <div class="flex items-center justify-between bg-surface-container-lowest p-space-xs rounded ${muted ? "opacity-50" : ""}">
+        <span class="text-on-surface font-medium">${label}</span>
+        <span class="text-outline text-right">${value}</span>
+      </div>`;
+  }
+
+  const ARROW = '<div class="flex justify-center text-outline"><span class="material-symbols-outlined text-[14px]">arrow_downward</span></div>';
+
+  function renderReview() {
+    const cfg = readConfig();
+    const rows = [
+      flowRow("1. Chemical Space", `${cfg.library_limit} demo candidates`, false),
+      flowRow("2. SA Filter", `RDKit SA ≤ ${cfg.sa_threshold.toFixed(1)}`, false),
+      flowRow("3. ADMET", cfg.enable_admet
+        ? (cfg.strict_admet_gate ? "Favorable only" : "Favorable + Moderate")
+        : "disabled", !cfg.enable_admet),
+      flowRow("4. Binding Affinity", cfg.enable_affinity
+        ? `top ${cfg.affinity_shortlist} by mocked Kd` : "disabled", !cfg.enable_affinity),
+      flowRow("5. Unbinding Kinetics", cfg.enable_kinetics
+        ? "koff & residence time" : "disabled", !cfg.enable_kinetics),
+      `<div class="flex items-center justify-between bg-surface-container p-space-xs rounded font-semibold text-primary">
+         <span>6. Candidate Shortlist</span><span>ranked output</span></div>`,
+    ];
+    document.getElementById("review-flow").innerHTML = rows.join(ARROW);
+    document.getElementById("json-preview").textContent = JSON.stringify(cfg, null, 2);
+  }
+
+  function renderTarget(t) {
+    const chain = chainParam || t.selected_chain;
+    const chainInfo = (t.chains || []).find((c) => c.chain_id === chain);
+    const label = `${t.name}${t.pdb_id ? ` (PDB ${t.pdb_id})` : ""}`;
+
+    document.getElementById("staging-target").textContent = t.pdb_id || t.name;
+    document.getElementById("ctx-target").textContent = `${t.name} · Chain ${chain || "—"}`;
+    document.getElementById("ctx-validation").textContent =
+      t.validation_status === "PASSED" ? "Passed input validation" : (t.validation_status || "—");
+    document.getElementById("ctx-structure").textContent = [
+      t.experiment_method || "method not stated",
+      fmt.resolution(t.resolution_a),
+    ].filter(Boolean).join(" · ");
+
+    document.getElementById("review-target").textContent = label;
+    document.getElementById("review-target-sub").textContent = [
+      chainInfo ? `Chain ${fmt.chainLabel(chainInfo)}` : null,
+      `${fmt.int(t.residue_count)} residues`,
+      `${fmt.int(t.atom_count)} atoms`,
+      t.is_demo ? "demo fixture" : null,
+    ].filter(Boolean).join(" · ");
+
+    document.getElementById("back-btn").href = `target-validation.html?target=${t.target_id}`;
+  }
+
+  function renderEngines(engines) {
+    document.getElementById("engine-rows").innerHTML = engines
+      .map((engine) => `
+        <div class="grid grid-cols-2 px-space-sm py-space-xs items-center gap-space-sm">
+          <span class="text-on-surface flex items-center gap-space-xs">
+            <span class="w-1.5 h-1.5 rounded-full ${engine.is_mocked ? "bg-outline-variant" : "bg-secondary"}"></span>
+            ${engine.name}
+          </span>
+          <div class="text-right">
+            <span class="px-space-xs py-space-2xs rounded text-mono-sm ${
+              engine.is_mocked
+                ? "bg-surface-container text-on-surface-variant"
+                : "bg-secondary/10 text-secondary font-semibold"
+            }">${engine.is_mocked ? "DEMO ADAPTER" : "REAL"}</span>
+            <div class="font-mono-sm text-mono-sm text-outline mt-space-2xs">${engine.backend}</div>
+          </div>
+        </div>`)
+      .join("");
+
+    const real = engines.filter((e) => !e.is_mocked).map((e) => e.name);
+    const mocked = engines.filter((e) => e.is_mocked).map((e) => e.name);
+    document.getElementById("review-real").textContent = real.join(", ") || "none";
+    document.getElementById("review-mocked").textContent = `${mocked.length} of ${engines.length} stages`;
+  }
+
+  // --- interactions ------------------------------------------------------
+  ["cfg-library", "cfg-sa", "cfg-admet", "cfg-affinity", "cfg-kinetics",
+   "cfg-strict-admet", "cfg-shortlist"].forEach((id) => {
+    document.getElementById(id).addEventListener("change", renderReview);
+    document.getElementById(id).addEventListener("input", renderReview);
+  });
+
+  document.getElementById("json-btn").addEventListener("click", () => {
+    const pre = document.getElementById("json-preview");
+    pre.hidden = !pre.hidden;
+  });
+
+  document.getElementById("start-btn").addEventListener("click", async () => {
+    clearError("start-error");
+    const button = document.getElementById("start-btn");
+    button.disabled = true;
+    document.getElementById("start-label").textContent = "Creating job…";
+    try {
+      const job = await API.createJob(readConfig());
+      // Job exists and the pipeline is running — hand off to the run screen.
+      window.location.href = `dashboard.html?job=${job.job_id}`;
+    } catch (error) {
+      button.disabled = false;
+      document.getElementById("start-label").textContent = "Start Discovery";
+      showError("start-error", error.message, error.checks);
+    }
+  });
+
+  (async function init() {
+    const breadcrumb = [
+      { label: "Discoveries", href: "discoveries.html" },
+      { label: "New Discovery", href: "new-discovery.html" },
+      { label: "Configure & Review" },
+    ];
+    Shell.render({ active: "configure", breadcrumb });
+    Shell.loadEngines();
+
+    if (!targetId) {
+      showError("load-error", "No target selected. Start from New Discovery.");
+      return;
+    }
+    try {
+      target = await API.target(targetId);
+      renderTarget(target);
+      renderEngines(await API.engines());
+      renderReview();
+      document.getElementById("content").hidden = false;
+      Shell.render({
+        active: "configure",
+        breadcrumb,
+        context: [{ label: "TARGET", value: `${target.name}${target.pdb_id ? ` (${target.pdb_id})` : ""}` }],
+      });
+      Shell.loadEngines();
+    } catch (error) {
+      showError("load-error", error.message, error.checks);
+    }
+  })();
+</script>
+</body>
+</html>
