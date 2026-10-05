@@ -12,6 +12,12 @@
 
 ---
 
+> **Update 2026-10-06 (deployment hardening):** the application is now containerised and
+> PostgreSQL-backed. SQLite remains only as a dev/test fallback. Schema is managed by
+> Alembic; configuration is centralised in `backend/config.py`; artifact paths are stored
+> relative to `DATA_DIR`; `/health` and `/ready` exist. See `docs/DEPLOYMENT.md`. Statements
+> below about SQLite, `create_all`, or "no Docker" describe the earlier MVP.
+>
 > **Update 2026-10-05:** the New Discovery flow, PDB validation, target persistence,
 > service adapters, per-run artifacts and 40-compound library are now implemented.
 > Sections below describing "no PDB upload" or a hardcoded target are historical;

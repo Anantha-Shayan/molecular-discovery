@@ -1,0 +1,42 @@
+# Keep the build context (and therefore the image) to what the app needs.
+# The Dockerfile copies only: requirements, constraints, alembic*, backend/,
+# frontend/ and data/fixtures/ — everything below is excluded regardless.
+
+# Version control / editors / OS
+.git
+.gitignore
+.gitattributes
+.idea
+.vscode
+*.swp
+.DS_Store
+
+# Python artefacts and local environments
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Secrets and local config — never bake these into an image
+.env
+.env.*
+!.env.example
+
+# Local runtime data: databases, run artifacts, uploaded structures
+data/*
+!data/fixtures
+data/fixtures/README.md
+
+# Not needed at runtime
+tests
+docs
+scripts
+*.md
+Dockerfile
+docker-compose*.yml
+compose*.yaml
+.dockerignore
+requirements-dev.txt

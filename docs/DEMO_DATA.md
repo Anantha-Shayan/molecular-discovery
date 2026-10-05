@@ -79,15 +79,14 @@ Mocked values are a SHA-256 hash of `stage : target_seed : smiles`, where
 - This is a demo property, not science: the hash is not a physical model.
 
 The only nondeterminism is timing. Mocked stages sleep briefly
-(`MDP_STAGE_DELAY_SECONDS`, default 0.8 s per stage, or `stage_delay_seconds`
+(`STAGE_DELAY_SECONDS`, default 0.8 s per stage, or `stage_delay_seconds`
 per job) so progress is watchable; real SA is never delayed. Tests set it to 0.
 
 ## Generated artifacts
 
 ```
-data/
-  app.db                       SQLite database
-  fixtures/                    bundled demo structure
+DATA_DIR/                      ./data locally, /var/lib/mdp in the container
+  app.db                       SQLite database (local development only)
   targets/{target_id}/structure.pdb      stored copy of each target
   runs/{job_id}/
     target/target.pdb          structure staged into the run
@@ -99,18 +98,29 @@ data/
     final/candidates.sdf       real RDKit SDF of final candidates
 ```
 
-Each file has an `Artifact` row pointing at it; file contents are never stored
-in the database.
+Each file has an `Artifact` row pointing at it (path stored relative to `DATA_DIR`);
+file contents are never stored in the database. The demo fixture lives separately, in
+`data/fixtures/` inside the application (and the Docker image), so it is available
+regardless of where `DATA_DIR` points.
 
 ## Reset / regenerate
+
+**Docker deployment** (PostgreSQL) — see `docs/DEPLOYMENT.md` §12:
+
+```bash
+docker compose down -v      # DESTRUCTIVE: deletes the database and all artifacts
+docker compose up -d        # fresh and migrated
+```
+
+**Local development** (SQLite):
 
 ```bash
 rm -f data/app.db data/app.db-wal data/app.db-shm
 rm -rf data/runs data/targets
 ```
 
-The database and folders are recreated on next start. Fixtures are untouched.
-Same inputs reproduce the same results.
+Tables and folders are recreated on next start. Fixtures are untouched. Same inputs
+reproduce the same results.
 
 ## Replacing demo components with partner services
 

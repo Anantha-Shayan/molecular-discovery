@@ -33,7 +33,12 @@ multi-trillion-compound library is obviously out of scope for a demo.
 
 ```
 backend/
-  database.py   SQLite engine (WAL), additive column migration, DATABASE_URL override
+  config.py     all environment configuration, in one place
+  database.py   engine/session (PostgreSQL; SQLite for dev/tests only), DB readiness wait
+  migrations.py programmatic Alembic access;  alembic/ holds the migrations
+  storage.py    artifact paths: stored relative to DATA_DIR, jail-checked
+  entrypoint.py container start: wait for DB -> migrate -> serve
+  logging_config.py  stdout logging (JSON outside development) with job/stage context
   models.py     Target, Job, JobStageLog, Molecule, StageResult, Artifact
   schemas.py    Pydantic request/response models
   pipeline.py   Sequential orchestrator + state machine; commits at each stage
@@ -73,6 +78,11 @@ for the fixture, library and real-vs-mocked detail.
   progress tracking, retries, and failure diagnosis, implemented for
   real because it costs nothing and is what interviewers are most
   likely to probe ("what happens if a stage fails?").
+- **Pipeline runs inside the API process** (a background task). That is simple and
+  enough here, but a restart abandons any run in flight — it is marked `FAILED`
+  on the next start — and exactly one app process is supported. Production
+  direction: API → durable job queue → CPU workers → GPU workers
+  (see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
 - **No queue/broker (Celery, etc.)**: a single sequential
   `BackgroundTasks` call is enough for a 10-molecule demo job. Using a
   real broker here would be over-engineering, not a stronger signal —
@@ -84,19 +94,64 @@ for the fixture, library and real-vs-mocked detail.
 
 ## Running it
 
+### Docker deployment (PostgreSQL) — the supported way to run it
+
+Requires Docker with the Compose plugin. Full detail: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 ```bash
-python -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.example .env                      # then set POSTGRES_PASSWORD (openssl rand -hex 24)
+docker compose build
+docker compose up -d                      # starts postgres, waits for it, migrates, starts the app
+docker compose ps                         # both services should report "healthy"
+python scripts/smoke_test.py              # optional: end-to-end API check of the deployment
+```
+
+Open <http://127.0.0.1:8008>. The app container runs `alembic upgrade head`
+itself before serving, so no manual migration step is needed (to run it by hand:
+`docker compose run --rm app alembic upgrade head`).
+
+```bash
+docker compose logs -f                    # follow logs (JSON, written to stdout)
+docker compose down                       # stop; the database and run artifacts are kept
+docker compose down -v                    # DESTRUCTIVE: also deletes the database and all artifacts
+```
+
+| Where | What lives there |
+|---|---|
+| Docker volume `molecular-discovery_pgdata` | the PostgreSQL database |
+| Docker volume `molecular-discovery_mdp_data` → `/var/lib/mdp` | stored uploads (`targets/`) and per-run artifacts: PDB, stage outputs, SDF (`runs/<job_id>/…`) |
+| inside the image | application code, UI, and the bundled demo fixture (read-only) |
+
+Configuration is by environment variables, all listed in `.env.example`
+(`APP_ENV`, `LOG_LEVEL`, `CORS_ORIGINS`, `PORT`, `MAX_UPLOAD_MB`, …). PostgreSQL is
+not published to the host; only the app port is.
+
+**Reset the demo to a clean state** (deletes all runs and uploads):
+
+```bash
+docker compose down -v && docker compose up -d
+```
+
+### Local development (no Docker)
+
+```bash
+python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/uvicorn backend.main:app --port 8008
 ```
 
-Open <http://127.0.0.1:8008> — the API serves the UI. API docs are at `/docs`.
+With `APP_ENV` unset (= `development`) and no `DATABASE_URL`, this uses a local
+SQLite file (`data/app.db`) — a zero-setup convenience that is refused in `demo`
+and `production`. To develop against PostgreSQL instead, set `DATABASE_URL` and run
+`.venv/bin/alembic upgrade head` once. Open <http://127.0.0.1:8008>; API docs are at `/docs`.
 
 ```bash
-.venv/bin/python -m pytest tests/ -q     # 52 tests, uses a temporary database
+.venv/bin/python -m pytest tests/ -q                      # SQLite, temporary database
+TEST_DATABASE_URL=postgresql://user:pw@localhost:5432/mdp_test \
+    .venv/bin/python -m pytest tests/ -q                  # PostgreSQL (use a disposable DB)
 ```
 
-`MDP_STAGE_DELAY_SECONDS` (default `0.8`) sets the deliberate pause in each
-*mocked* stage so progress is visible; set `0` for instant runs.
+`STAGE_DELAY_SECONDS` (default `0.8`) sets the deliberate pause in each *mocked*
+stage so progress is visible; set `0` for instant runs.
 
 ### Endpoints
 
@@ -114,9 +169,11 @@ Open <http://127.0.0.1:8008> — the API serves the UI. API docs are at `/docs`.
 - No retry/backoff on stage failure (the log records failure; nothing
   auto-retries yet).
 - No auth — fine for a take-home, not for production.
-- Runs execute in the API process; a restart mid-run leaves a job in a
-  non-terminal state. A durable queue + CPU/GPU workers is the production
-  direction, deliberately not built here.
+- Runs execute in the API process: a restart abandons the run in flight (it is
+  marked failed on next start) and only one app process is supported. A durable
+  queue + CPU/GPU workers is the production direction, deliberately not built here.
+- Artifacts are on a local Docker volume, not object storage; no authentication;
+  no TLS termination (put a reverse proxy in front for anything public).
 - mmCIF support covers the `_atom_site` loop and a few header items only.
 - No pocket detection or structure preparation; "validation" is structural.
 - Mocked stages are deterministic placeholders. A real integration replaces one

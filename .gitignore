@@ -4,13 +4,25 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Local data: the SQLite dev DB and generated run artifacts are
-# reproducible by re-running the pipeline, so they don't belong in git.
+# Secrets / local configuration — only .env.example is committed
+.env
+.env.*
+!.env.example
+docker-compose.override.yml
+
+# Local runtime data (reproducible by re-running the pipeline).
+# data/fixtures/ is intentionally committed.
 data/app.db
+data/app.db-wal
+data/app.db-shm
 data/runs/
 data/targets/
 
-# SQLite WAL sidecar files
-data/app.db-wal
-data/app.db-shm
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store

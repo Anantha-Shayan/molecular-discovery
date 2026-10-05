@@ -228,10 +228,10 @@
   function metadataRow(label, value, sub) {
     return `
       <div class="px-space-md py-2.5 flex items-center justify-between gap-space-sm text-body-sm">
-        <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider shrink-0">${label}</span>
+        <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider shrink-0">${esc(label)}</span>
         <div class="text-right min-w-0">
-          <span class="font-mono-data text-mono-data text-on-surface font-medium break-words">${value}</span>
-          ${sub ? `<div class="font-mono-sm text-mono-sm text-outline">${sub}</div>` : ""}
+          <span class="font-mono-data text-mono-data text-on-surface font-medium break-words">${esc(value)}</span>
+          ${sub ? `<div class="font-mono-sm text-mono-sm text-outline">${esc(sub)}</div>` : ""}
         </div>
       </div>`;
   }
@@ -274,8 +274,8 @@
             </span>
           </div>
           <div class="space-y-0.5 min-w-0">
-            <div class="font-headline-sm text-body-default font-semibold text-on-surface">${check.label}</div>
-            <p class="font-mono-sm text-mono-sm text-on-surface-variant break-words">${check.detail}</p>
+            <div class="font-headline-sm text-body-default font-semibold text-on-surface">${esc(check.label)}</div>
+            <p class="font-mono-sm text-mono-sm text-on-surface-variant break-words">${esc(check.detail)}</p>
           </div>
         </div>`)
       .join("");
@@ -315,8 +315,8 @@
 
     const select = document.getElementById("chain-select");
     select.innerHTML = (target.chains || [])
-      .map((c) => `<option value="${c.chain_id}" ${c.chain_id === target.selected_chain ? "selected" : ""}>
-        Chain ${c.chain_id} — ${fmt.int(c.residue_count)} residues
+      .map((c) => `<option value="${esc(c.chain_id)}" ${c.chain_id === target.selected_chain ? "selected" : ""}>
+        Chain ${esc(c.chain_id)} — ${fmt.int(c.residue_count)} residues
       </option>`)
       .join("");
 

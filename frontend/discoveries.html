@@ -126,14 +126,14 @@
   function renderRows(jobs) {
     document.getElementById("runs-tbody").innerHTML = jobs
       .map((job) => `
-        <tr class="hover:bg-surface-container-low/70 transition-colors cursor-pointer" data-job="${job.job_id}">
+        <tr class="hover:bg-surface-container-low/70 transition-colors cursor-pointer" data-job="${esc(job.job_id)}">
           <td class="px-space-md py-space-sm">
-            <div class="font-mono-data text-mono-data text-on-surface font-semibold">${fmt.dash(job.label)}</div>
-            <div class="font-mono-sm text-mono-sm text-outline">${job.job_id.slice(0, 8)}</div>
+            <div class="font-mono-data text-mono-data text-on-surface font-semibold">${esc(fmt.dash(job.label))}</div>
+            <div class="font-mono-sm text-mono-sm text-outline">${esc(job.job_id.slice(0, 8))}</div>
           </td>
           <td class="px-space-md py-space-sm">
-            <div class="font-body-default text-body-default text-on-surface">${fmt.dash(job.target_name)}</div>
-            <div class="font-mono-sm text-mono-sm text-outline">${job.pdb_id ? "PDB " + job.pdb_id : "—"}</div>
+            <div class="font-body-default text-body-default text-on-surface">${esc(fmt.dash(job.target_name))}</div>
+            <div class="font-mono-sm text-mono-sm text-outline">${job.pdb_id ? "PDB " + esc(job.pdb_id) : "—"}</div>
           </td>
           <td class="px-space-md py-space-sm font-mono-sm text-mono-sm text-on-surface-variant">
             ${SOURCE_LABEL[job.target_source] || "—"}

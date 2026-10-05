@@ -10,7 +10,7 @@ import os
 
 from sqlalchemy import select
 
-from backend import models, pipeline
+from backend import models, pipeline, storage
 from backend.database import get_session
 
 
@@ -98,12 +98,13 @@ def test_target_structure_is_staged_into_the_run_directory(client, demo_pdb_byte
         ).scalars().all()
         assert artifacts, "pipeline did not stage the target structure"
 
-        path = artifacts[0].storage_path
-        assert os.path.exists(path)
-        assert job_id in path
+        stored = artifacts[0].storage_path
+        assert not os.path.isabs(stored)  # relative to DATA_DIR
+        assert job_id in stored
+        path = storage.resolve(stored)
+        assert path.is_file()
         # Byte-identical to what the user supplied.
-        with open(path, "rb") as handle:
-            assert handle.read() == demo_pdb_bytes
+        assert path.read_bytes() == demo_pdb_bytes
 
 
 def test_results_are_deterministic_for_the_same_target(client):
@@ -311,16 +312,15 @@ def test_run_artifacts_are_written(client):
 
     for stage in ("target", "screening", "sa", "admet", "affinity", "kinetics", "final"):
         assert stage in paths, f"missing artifact for {stage}"
-        assert os.path.exists(paths[stage])
+        assert storage.resolve(paths[stage]).is_file()
+        assert not os.path.isabs(paths[stage])
 
     # The SA artifact holds real per-molecule scores keyed by molecule id.
-    with open(paths["sa"]) as handle:
-        sa_rows = json.load(handle)
+    sa_rows = json.loads(storage.resolve(paths["sa"]).read_text())
     assert len(sa_rows) == 25
     assert all("molecule_id" in row and "sa_score" in row for row in sa_rows)
 
-    with open(paths["final"]) as handle:
-        assert "$$$$" in handle.read()
+    assert "$$$$" in storage.resolve(paths["final"]).read_text()
 
 
 def test_failed_job_records_a_reason(client):

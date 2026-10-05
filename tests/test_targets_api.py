@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 
-from backend import models
+from backend import models, storage
 from backend.database import get_session
 
 
@@ -26,11 +26,15 @@ def test_demo_target_is_created_and_persisted(client):
     with get_session() as session:
         target = session.get(models.Target, body["target_id"])
         assert target is not None
-        assert target.structure_path and os.path.exists(target.structure_path)
+        assert target.structure_path
+        # Stored relative to DATA_DIR — never an absolute host path.
+        assert not os.path.isabs(target.structure_path)
+        assert storage.resolve(target.structure_path).is_file()
         assert target.artifact_id is not None
         artifact = session.get(models.Artifact, target.artifact_id)
         assert artifact.kind == "pdb"
-        assert os.path.exists(artifact.storage_path)
+        assert not os.path.isabs(artifact.storage_path)
+        assert storage.resolve(artifact.storage_path).is_file()
 
 
 def test_demo_target_is_deterministic(client):

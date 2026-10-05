@@ -108,6 +108,15 @@ const fmt = {
   },
 };
 
+/** HTML-escape untrusted text before it goes into innerHTML. Anything that
+ *  originates in an uploaded file (title, filename, chain IDs, error text
+ *  quoting file content) must pass through this. */
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]
+  ));
+}
+
 const params = new URLSearchParams(window.location.search);
 
 // ---------------------------------------------------------------------------
@@ -139,8 +148,8 @@ const Shell = {
       .map((crumb, index) => {
         const last = index === breadcrumb.length - 1;
         const inner = crumb.href
-          ? `<a class="text-outline hover:text-on-surface transition-colors" href="${crumb.href}">${crumb.label}</a>`
-          : `<span class="${last ? "text-primary font-semibold" : "text-outline"}">${crumb.label}</span>`;
+          ? `<a class="text-outline hover:text-on-surface transition-colors" href="${crumb.href}">${esc(crumb.label)}</a>`
+          : `<span class="${last ? "text-primary font-semibold" : "text-outline"}">${esc(crumb.label)}</span>`;
         const sep = index > 0
           ? '<span class="material-symbols-outlined text-[12px] text-outline-variant">chevron_right</span>'
           : "";
@@ -152,8 +161,8 @@ const Shell = {
       .map(
         (item) => `
         <div class="hidden lg:flex items-center gap-space-xs">
-          <span class="text-outline">${item.label}:</span>
-          <span class="text-on-surface font-semibold">${item.value}</span>
+          <span class="text-outline">${esc(item.label)}:</span>
+          <span class="text-on-surface font-semibold">${esc(item.value)}</span>
         </div>`
       )
       .join("");
@@ -259,8 +268,8 @@ const Shell = {
       host.innerHTML = engines
         .map(
           (engine) => `
-          <div class="flex items-center justify-between gap-space-xs" title="${engine.note.replace(/"/g, "&quot;")}">
-            <span class="truncate">${engine.name}</span>
+          <div class="flex items-center justify-between gap-space-xs" title="${esc(engine.note)}">
+            <span class="truncate">${esc(engine.name)}</span>
             ${badgeHTML(engine.is_mocked)}
           </div>`
         )
@@ -290,7 +299,7 @@ function showError(hostId, message, checks = []) {
         <span class="material-symbols-outlined text-[14px] mt-0.5 ${check.passed ? "text-secondary" : "text-error"}">
           ${check.passed ? "check_circle" : "cancel"}
         </span>
-        <span><strong>${check.label}</strong> — ${check.detail}</span>
+        <span><strong>${esc(check.label)}</strong> — ${esc(check.detail)}</span>
       </li>`
     )
     .join("");
@@ -300,7 +309,7 @@ function showError(hostId, message, checks = []) {
         <span class="material-symbols-outlined text-[18px]">error</span>
         Could not use this structure
       </div>
-      <p class="font-body-default text-body-default text-on-error-container">${message}</p>
+      <p class="font-body-default text-body-default text-on-error-container">${esc(message)}</p>
       ${checkList ? `<ul class="font-body-sm text-body-sm text-on-error-container space-y-space-2xs mt-space-xs">${checkList}</ul>` : ""}
     </div>`;
   host.hidden = false;

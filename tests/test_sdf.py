@@ -88,11 +88,9 @@ def test_job_level_sdf_contains_every_final_candidate(client):
 
 def test_job_sdf_artifact_matches_the_endpoint(client):
     """The SDF written to disk during the run is the same real output."""
-    import os
-
     from sqlalchemy import select
 
-    from backend import models
+    from backend import models, storage
     from backend.database import get_session
 
     job_id = completed_job(client, library_limit=25)
@@ -103,9 +101,8 @@ def test_job_sdf_artifact_matches_the_endpoint(client):
             )
         ).scalars().first()
 
-    assert artifact_path and os.path.exists(artifact_path)
-    with open(artifact_path) as handle:
-        on_disk = parse_sdf(handle.read())
+    assert artifact_path
+    on_disk = parse_sdf(storage.resolve(artifact_path).read_text())
 
     from_api = parse_sdf(client.get(f"/api/jobs/{job_id}/candidates.sdf").text)
     assert {m.GetProp("_Name") for m in on_disk} == {m.GetProp("_Name") for m in from_api}

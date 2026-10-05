@@ -131,8 +131,8 @@ and each record carries a `PROVENANCE` statement.
 
 ## 5. Demo script (≈ 6 minutes)
 
-Start the app: `uvicorn backend.main:app --port 8008`, open
-`http://127.0.0.1:8008`.
+Start the app — `docker compose up -d` (see `docs/DEPLOYMENT.md`), or for local
+development `uvicorn backend.main:app --port 8008` — and open `http://127.0.0.1:8008`.
 
 1. **Open Discoveries.** Point out the honest framing box: what is real, what
    is a demo adapter.
