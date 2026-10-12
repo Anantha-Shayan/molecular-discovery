@@ -105,9 +105,46 @@ at a time; others queue.
   with `alembic upgrade`; to roll the schema back too: `docker compose run --rm app alembic downgrade 0001`
   (0002 only adds tables/columns). Destructive reset (deletes all data): `docker compose down -v`.
 
-## 6. Security notes
+## 6. Caddy (bundled reverse proxy, optional)
+
+The API has no login of its own, so something must sit in front of it before anyone but you can reach
+it. `docker-compose.prod.yml` includes a `caddy` service for this — `docker compose ... up -d` starts it
+alongside `app` and `postgres` automatically; only the `Caddyfile` needs editing.
+
+**Pre-flight check — run this before `up -d` if the server might already run a web server (nginx, Apache,
+another proxy):**
+```bash
+sudo ss -ltnp '( sport = :80 or sport = :443 )'
+```
+- **Empty output** → ports are free, Caddy will start cleanly. Proceed.
+- **Something listed** → that port is taken. Docker will then simply fail to start the `caddy` container
+  (port already in use) — this does **not** disturb whatever already holds the port, it just means Caddy
+  won't come up. Either stop here and use the existing nginx/proxy instead (point it at `127.0.0.1:8008`,
+  the app's own binding), or edit the `ports:` lines under `caddy:` in `docker-compose.prod.yml` to use
+  different host ports (e.g. `8080:80`) before starting.
+
+**Steps (ports free):**
+1. `docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build`
+   — brings up `postgres`, `app` and `caddy` together.
+2. Generate a password hash and put it in `Caddyfile` in place of `REPLACE_WITH_HASH`:
+   ```bash
+   C="docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod"
+   $C exec caddy caddy hash-password
+   ```
+3. Edit `Caddyfile`: change `:80` to the server's real DNS name if it has one reachable from where
+   reviewers will connect (Caddy then provisions HTTPS automatically via Let's Encrypt); otherwise leave
+   it as `:80` for plain HTTP on an internal-only hostname/IP.
+4. `$C restart caddy`
+5. Visit `http://<server-dns-or-ip>/` (or `https://` if you set a real domain) — log in with the
+   `admin` user and the password you hashed in step 2. You should see the app live.
+
+No other file changes are needed; `app` keeps its own `127.0.0.1:8008` binding for direct SSH-tunnelled
+debugging, which doesn't conflict with Caddy on 80/443.
+
+## 7. Security notes
 
 Uploads are size-limited and parsed, never executed; tool arguments are argv lists (no shell); child
 processes get a minimal environment (no `DATABASE_URL`); the licence path, never its content, is passed to
 the vendor tool; `/api/tools` shows tool names/versions only; the container is read-only, non-root,
-`cap_drop: ALL`. The API has **no authentication** — put it behind the company reverse proxy / SSO.
+`cap_drop: ALL`. The API has **no authentication of its own** — §6's Caddy (or the company's existing
+nginx/SSO) is what actually protects it; don't skip that step on a reachable network.
