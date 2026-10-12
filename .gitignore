@@ -11,6 +11,7 @@ venv/
 .env
 .env.*
 !.env.example
+!.env.*.example
 docker-compose.override.yml
 
 # Local runtime data (reproducible by re-running the pipeline).
@@ -20,9 +21,18 @@ data/app.db-wal
 data/app.db-shm
 data/runs/
 data/targets/
+data/library_cache/
 
 # Editors / OS
 .idea/
 .vscode/
 *.swp
 .DS_Store
+.env.local
+
+#license
+.lic
+
+.env.vps
+.env.prod
+.env.dev

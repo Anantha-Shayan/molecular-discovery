@@ -56,136 +56,45 @@ class PdbIdRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Jobs
+# Campaigns (stored as "jobs")
 # ---------------------------------------------------------------------------
+class SiteRequest(BaseModel):
+    """Binding site: from a co-crystallised ligand, or a manual box (Vina only)."""
+
+    mode: str = "ligand"                 # ligand | manual
+    reference: str | None = None         # "HET:chain:resseq" from /api/targets/{id}/sites
+    padding: float = 6.0
+    center: list[float] | None = None
+    size: list[float] | None = None
+
+
 class CreateJobRequest(BaseModel):
-    """Create a discovery run.
-
-    Preferred form supplies `target_id` from one of the /api/targets
-    endpoints. The legacy `target_name` / `pdb_id` form is still accepted so
-    the original API contract keeps working; it creates a metadata-only
-    target with no structure file.
-    """
-
-    target_id: str | None = None
-
-    # Legacy intake (pre-upload API). Retained for backwards compatibility.
-    target_name: str | None = None
-    pdb_id: str | None = None
-
-    run_tag: str | None = None
+    target_id: str
     label: str | None = None
-    selected_chain: str | None = None
-
-    # Configuration — only parameters that genuinely affect this pipeline.
-    library_limit: int = 25
+    chain: str | None = None
+    engine: str = "vina"
+    site: SiteRequest
+    library_source: str = "zinc20"
+    library_count: int = 30
+    library_seed: int = 42
+    library_upload: str | None = Field(default=None, max_length=2_000_000)
+    exhaustiveness: int = 8
+    num_modes: int = 5
+    clash_tolerance: int = 0
+    dock_keep_fraction: float = 0.5
+    enable_hyde: bool = True
     sa_threshold: float = 5.0
     enable_admet: bool = True
+    strict_admet_gate: bool = True
     enable_affinity: bool = True
     enable_kinetics: bool = True
-    strict_admet_gate: bool = True
-    affinity_shortlist: int = 8
-    stage_delay_seconds: float | None = None
+    rank_by: str = "hyde"
+    enable_grow: bool = False
+    grow_parents: int = 3
+    grow_per_parent: int = 20
+    batch_size: int | None = None
 
 
-class StageCard(BaseModel):
-    stage_no: int
-    key: str
-    label: str
-    subtitle: str
-    count: int | None
-    count_label: str
-    badge: str
-    status: str  # "done" | "active" | "pending" | "failed" | "skipped"
-    is_mocked: bool
-    scale_note: str | None = None  # e.g. "10T+ conceptual library scale"
-    count_in: int | None = None
-    count_out: int | None = None
-    detail: str | None = None
-
-
-class EngineInfo(BaseModel):
-    key: str
-    name: str
-    is_mocked: bool
-    backend: str
-    note: str
-
-
-class JobStatusResponse(BaseModel):
-    job_id: str
-    status: str
-    current_stage: str | None
-    target_name: str
-    pdb_id: str | None
-    stages: list[StageCard]
-    retained: int
-    # Added for the real flow; existing fields above are unchanged.
-    target: TargetResponse | None = None
-    config: dict = Field(default_factory=dict)
-    engines: list[EngineInfo] = Field(default_factory=list)
-    label: str | None = None
-    created_at: str | None = None
-    updated_at: str | None = None
-    failure_reason: str | None = None
-
-
-class JobSummary(BaseModel):
-    job_id: str
-    label: str | None
-    status: str
-    current_stage: str | None
-    target_name: str
-    pdb_id: str | None
-    target_source: str | None
-    candidate_count: int
-    created_at: str | None
-
-
-class JobListResponse(BaseModel):
-    jobs: list[JobSummary]
-
-
-# ---------------------------------------------------------------------------
-# Candidates
-# ---------------------------------------------------------------------------
-class CandidateRow(BaseModel):
-    molecule_id: str
-    display_id: str
-    rank: int
-    smiles: str
-    structure_svg: str
-    molecular_weight: float
-    sa_score: float
-    admet_profile: str
-    kd_nm: float
-    koff_per_s: float
-    residence_time_min: float
-    status: str
-
-
-class CandidateListResponse(BaseModel):
-    job_id: str
-    candidates: list[CandidateRow]
-
-
-class ProvenanceStep(BaseModel):
-    label: str
-    is_mocked: bool
-
-
-class CandidateDetailResponse(BaseModel):
-    molecule_id: str
-    display_id: str
-    smiles: str
-    structure_svg: str
-    molecular_weight: float
-    sa_score: float
-    admet_profile: str
-    admet_property_count: int
-    kd_nm: float
-    delta_g_kcal_mol: float
-    koff_per_s: float
-    residence_time_min: float
-    status: str
-    provenance: list[ProvenanceStep]
+class RetryRequest(BaseModel):
+    batch_ids: list[str] | None = None
+    failed_molecules: bool = False

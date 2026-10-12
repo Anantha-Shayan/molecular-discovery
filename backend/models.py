@@ -100,6 +100,9 @@ class Job(Base):
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     params: Mapped[dict] = mapped_column(JSON, default=dict)
     label: Mapped[str | None] = mapped_column(String, nullable=True)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    started_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now, index=True)
     updated_at: Mapped[dt.datetime] = mapped_column(
         DateTime, default=_now, onupdate=_now
@@ -108,6 +111,59 @@ class Job(Base):
     target: Mapped["Target"] = relationship(back_populates="jobs")
     molecules: Mapped[list["Molecule"]] = relationship(back_populates="job")
     stage_logs: Mapped[list["JobStageLog"]] = relationship(back_populates="job")
+    stages: Mapped[list["JobStage"]] = relationship(back_populates="job")
+    batches: Mapped[list["Batch"]] = relationship(back_populates="job")
+
+
+class JobStage(Base):
+    """Persistent state of one stage of one campaign (the UI's stage cards)."""
+
+    __tablename__ = "job_stages"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), index=True)
+    stage: Mapped[str] = mapped_column(String)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    # pending | running | succeeded | failed | skipped | cancelled
+    status: Mapped[str] = mapped_column(String, default="pending")
+    count_in: Mapped[int] = mapped_column(Integer, default=0)
+    count_out: Mapped[int] = mapped_column(Integer, default=0)
+    count_failed: Mapped[int] = mapped_column(Integer, default=0)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tool: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. "AutoDock Vina v1.2.7"
+    started_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+
+    job: Mapped["Job"] = relationship(back_populates="stages")
+
+
+class Batch(Base):
+    """A unit of work within a stage: a fixed list of molecules run together.
+
+    The molecule list is fixed when the batch is created, so a retry re-runs
+    exactly the same molecules, and a resume skips batches already succeeded.
+    """
+
+    __tablename__ = "batches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), index=True)
+    stage: Mapped[str] = mapped_column(String, index=True)
+    index: Mapped[int] = mapped_column(Integer)
+    # pending | running | succeeded | failed | retrying | skipped | cancelled
+    status: Mapped[str] = mapped_column(String, default="pending")
+    attempt: Mapped[int] = mapped_column(Integer, default=0)
+    molecule_ids: Mapped[list] = mapped_column(JSON, default=list)
+    ok_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    log_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    started_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+    job: Mapped["Job"] = relationship(back_populates="batches")
 
 
 class JobStageLog(Base):
@@ -137,6 +193,14 @@ class Molecule(Base):
     smiles: Mapped[str] = mapped_column(Text)
     inchikey: Mapped[str | None] = mapped_column(String, nullable=True)
     source_stage: Mapped[str] = mapped_column(String, default="screening")
+    # Where the structure came from: zinc20 | demo_library | upload. A catalogue
+    # hit is never presented as a novel or generated molecule.
+    source: Mapped[str | None] = mapped_column(String, nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. ZINC ID
+    # active: still in the funnel | filtered: removed by a stated rule | failed: tool error
+    outcome: Mapped[str] = mapped_column(String, default="active")
+    exit_stage: Mapped[str | None] = mapped_column(String, nullable=True)
+    exit_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now)
 
     job: Mapped["Job"] = relationship(back_populates="molecules")
@@ -152,6 +216,10 @@ class StageResult(Base):
     stage: Mapped[str] = mapped_column(String)  # screening | sa | admet | affinity | kinetics
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     is_mocked: Mapped[bool] = mapped_column(Boolean, default=False)
+    # succeeded | failed  (a failed row records WHY a molecule has no result)
+    status: Mapped[str] = mapped_column(String, default="succeeded")
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    batch_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now)
 
     molecule: Mapped["Molecule"] = relationship(back_populates="stage_results")

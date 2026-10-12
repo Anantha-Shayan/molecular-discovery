@@ -1,5 +1,6 @@
 # Runtime dependencies (direct), pinned to the versions this project is tested with.
 # Transitive dependencies are pinned in constraints.txt, which the Dockerfile applies.
+# Install:  pip install --extra-index-url https://download.pytorch.org/whl/cpu -c constraints.txt -r requirements.txt
 fastapi==0.142.2
 uvicorn==0.54.0
 sqlalchemy==2.1.3
@@ -8,3 +9,10 @@ rdkit==2026.3.6
 python-multipart==0.0.32    # multipart/form-data parsing for PDB upload
 alembic==1.20.0             # database migrations
 psycopg[binary]==3.3.6      # PostgreSQL driver (bundled libpq; no system packages needed)
+# --- scientific stack ---
+meeko==0.8.0                # ligand/receptor preparation for AutoDock Vina (PDBQT)
+gemmi==0.7.5                # mmCIF -> PDB conversion
+OpenMM==8.6.1               # used by PDBFixer
+pdbfixer==1.12.0            # add missing atoms / hydrogens at pH 7.4
+torch==2.14.1+cpu           # CPU build (see install line above)
+admet-ai==2.0.1             # ADMET prediction model (MIT)

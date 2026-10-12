@@ -57,6 +57,23 @@ def _float(name: str, default: float) -> float:
         raise ConfigError(f"{name} must be a number, got {raw!r}") from exc
 
 
+def _str(name: str) -> str | None:
+    raw = os.environ.get(name)
+    return raw.strip() if raw and raw.strip() else None
+
+
+def _path(name: str) -> Path | None:
+    raw = _str(name)
+    return Path(raw).expanduser().resolve() if raw else None
+
+
+# Where `scripts/install_tools.sh` puts vendor tools and the licence. Both are OUTSIDE the repository
+# on purpose (nothing here can be committed or end up in an image build context). They are used when the
+# corresponding environment variable is not set and the directory exists.
+DEFAULT_TOOLS_DIR = Path.home() / ".local" / "share" / "molecular-tools"
+DEFAULT_LICENSE_DIR = Path.home() / ".config" / "biosolveit"
+
+
 def normalize_database_url(url: str) -> str:
     """Accept the common spellings of a Postgres URL and pin the driver.
 
@@ -93,11 +110,29 @@ class Settings:
     cors_origins: tuple[str, ...]
     port: int
     max_upload_mb: int
-    stage_delay_seconds: float
     enable_api_docs: bool
     run_migrations: bool
     db_wait_timeout_seconds: int
     rcsb_timeout_seconds: int
+    # --- scientific tooling (all optional; absent tools are reported, never faked)
+    tools_dir: Path | None
+    vina_bin: str | None
+    flexx_bin: str | None
+    hydescorer_bin: str | None
+    fastgrow_bin: str | None
+    fastgrow_db_creator_bin: str | None
+    fastgrow_db: str | None   # path to a .fastgrowdb (e.g. BioSolveIT's 120k library); optional
+    # Directory (or file) holding the BioSolveIT .lic. Only the PATH is ever
+    # configured here; the license contents are never read, logged or served.
+    biosolve_license_file: str | None
+    # --- workflow execution limits
+    batch_size: int
+    max_parallel_batches: int
+    cpu_budget: int
+    batch_timeout_seconds: int
+    max_batch_attempts: int
+    zinc_cache_dir: Path
+    zinc_prefix_mb: int
 
     @property
     def is_development(self) -> bool:
@@ -175,12 +210,26 @@ def load_settings() -> Settings:
         cors_origins=cors_origins,
         port=_int("PORT", 8008),
         max_upload_mb=_int("MAX_UPLOAD_MB", 128),
-        # Pause inside each *mocked* stage so progress is visible in a demo.
-        stage_delay_seconds=_float("STAGE_DELAY_SECONDS", 0.8),
         enable_api_docs=_bool("ENABLE_API_DOCS", app_env != "production"),
         run_migrations=_bool("RUN_MIGRATIONS", True),
         db_wait_timeout_seconds=_int("DB_WAIT_TIMEOUT_SECONDS", 60),
         rcsb_timeout_seconds=_int("RCSB_TIMEOUT_SECONDS", 15),
+        tools_dir=_path("TOOLS_DIR") or (DEFAULT_TOOLS_DIR if DEFAULT_TOOLS_DIR.is_dir() else None),
+        vina_bin=_str("VINA_BIN"),
+        flexx_bin=_str("FLEXX_BIN"),
+        hydescorer_bin=_str("HYDESCORER_BIN"),
+        fastgrow_bin=_str("FASTGROW_BIN"),
+        fastgrow_db_creator_bin=_str("FASTGROW_DB_CREATOR_BIN"),
+        fastgrow_db=_str("FASTGROW_DB"),
+        biosolve_license_file=_str("BIOSOLVE_LICENSE_FILE")
+        or (str(DEFAULT_LICENSE_DIR) if DEFAULT_LICENSE_DIR.is_dir() else None),
+        batch_size=max(1, _int("BATCH_SIZE", 10)),
+        max_parallel_batches=max(1, _int("MAX_PARALLEL_BATCHES", 2)),
+        cpu_budget=max(1, _int("CPU_BUDGET", max(1, (os.cpu_count() or 4) // 2))),
+        batch_timeout_seconds=max(30, _int("BATCH_TIMEOUT_SECONDS", 1800)),
+        max_batch_attempts=max(1, _int("MAX_BATCH_ATTEMPTS", 3)),
+        zinc_cache_dir=data_dir / "library_cache",
+        zinc_prefix_mb=max(1, min(500, _int("ZINC_PREFIX_MB", 3))),
     )
 
 
