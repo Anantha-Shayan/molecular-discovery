@@ -33,10 +33,17 @@ data/fixtures/README.md
 # Not needed at runtime
 tests
 docs
-scripts
+scripts/*
+!scripts/verify_tools.py
 *.md
 Dockerfile
 docker-compose*.yml
 compose*.yaml
 .dockerignore
 requirements-dev.txt
+
+# Vendor tools and licences must never enter an image build context
+tools
+licenses
+*.lic
+*.tar.gz

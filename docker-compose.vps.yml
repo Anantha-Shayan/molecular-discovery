@@ -1,0 +1,33 @@
+# VPS override. The VPS already runs a reverse proxy (Caddy) in ANOTHER Compose stack, on that stack's
+# network. This app joins that network so Caddy can reach it by name; PostgreSQL stays on the app's
+# private network only and is never reachable from the proxy network or the internet.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.vps.yml --env-file .env.vps up -d --build
+#
+# Prerequisite: the proxy network must already exist (`docker network ls`). Its name is
+# <proxy-stack-folder>_default; the previous deployment used "n8n-stack_default" (with a hyphen).
+# Set CADDY_NETWORK in .env.vps if yours differs.
+
+services:
+  app:
+    environment:
+      APP_ENV: production
+      CPU_BUDGET: ${CPU_BUDGET:-2}
+      MAX_PARALLEL_BATCHES: ${MAX_PARALLEL_BATCHES:-1}
+    networks:
+      molecular-discovery-network: {}
+      caddy-proxy:
+        # Stable name for the Caddyfile (`reverse_proxy mdp-app:8008`), unlikely to clash with
+        # services of the other stack.
+        aliases:
+          - mdp-app
+    # No host port is published: only Caddy (on the shared network) can reach the app.
+    deploy:
+      resources:
+        limits:
+          memory: ${APP_MEMORY_LIMIT:-4g}
+
+networks:
+  caddy-proxy:
+    external: true
+    name: ${CADDY_NETWORK:-n8n-stack_default}

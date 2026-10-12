@@ -1,0 +1,18 @@
+# Optional GPU override (NVIDIA only). Adds the CUDA build of PyTorch to the image and gives the app container
+# the GPU, so ADMET-AI runs on it. Only ADMET-AI can use a GPU; docking and HYDE stay on the CPU.
+#
+# Host prerequisites: NVIDIA driver (`nvidia-smi` works) + NVIDIA Container Toolkit (docs/GPU.md).
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.gpu.yml --env-file .env.dev up -d --build
+services:
+  app:
+    build:
+      args:
+        TORCH_VARIANT: cu126
+    image: molecular-discovery:gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

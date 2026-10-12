@@ -1,0 +1,20 @@
+# Production / company Linux server override. The base file already mounts the BioSolveIT tools and licence
+# READ-ONLY from TOOLS_HOST_DIR / LICENSE_HOST_DIR (set both in .env.prod, e.g. /opt/molecular-tools and
+# /etc/biosolveit) — never copied into an image or the repository. This file adds the production defaults:
+# CPU budget and a localhost/LAN port.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Host layout: tools under TOOLS_HOST_DIR (one folder per tool, mode a+rX), the .lic under LICENSE_HOST_DIR
+# (readable by uid/gid 10001). `scripts/install_tools.sh` creates exactly this layout. See docs/DEPLOYMENT.md.
+
+services:
+  app:
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      CPU_BUDGET: ${CPU_BUDGET:-8}
+      MAX_PARALLEL_BATCHES: ${MAX_PARALLEL_BATCHES:-2}
+    # The company reverse proxy / SSO sits in front (the API has no authentication of its own).
+    # Default: reachable only from the server itself. Set BIND_ADDRESS=0.0.0.0 to expose it on the LAN.
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8008}:${PORT:-8008}"
