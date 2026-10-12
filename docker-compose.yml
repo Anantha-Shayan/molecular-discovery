@@ -1,97 +1,108 @@
-  # Molecular Discovery Platform — deployment stack.
-  #
-  #   Internet ──> app (FastAPI + UI + pipeline) ──> postgres (not published)
-  #
-  # Quick start:   cp .env.example .env   # then set POSTGRES_PASSWORD
-  #                docker compose up -d --build
-  # Details:       docs/DEPLOYMENT.md
+# Molecular Discovery Platform — SHARED BASE. Do not run this file alone for a real deployment;
+# combine it with ONE environment file:
+#
+#   VPS (Caddy in another stack):  docker compose -f docker-compose.yml -f docker-compose.vps.yml     --env-file .env.vps     up -d --build
+#   Company Linux server:          docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#   Local development:             docker compose -f docker-compose.yml -f docker-compose.dev.yml     --env-file .env.dev     up -d --build
+#
+# (or set COMPOSE_FILE=docker-compose.yml:docker-compose.<env>.yml in the env file and run plain `docker compose up -d`.)
+# What is common to every environment lives here: PostgreSQL on a PRIVATE network, the app, hardening,
+# the workflow limits. Anything that differs (networks, ports, vendor tools, resources) is in the override.
+# Details: docs/DEPLOYMENT.md (production server) and docs/VPS.md (VPS).
 
-  name: molecular-discovery
+name: molecular-discovery
 
-  services:
-    postgres:
-      image: postgres:16-alpine
-      restart: unless-stopped
-      environment:
-        POSTGRES_DB: ${POSTGRES_DB:-molecular_discovery}
-        POSTGRES_USER: ${POSTGRES_USER:-mdp}
-        # No default on purpose: Compose refuses to start until it is set.
-        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}
-      volumes:
-        - pgdata:/var/lib/postgresql/data
-      networks:
-        - molecular-discovery-network
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-        interval: 5s
-        timeout: 3s
-        retries: 12
-        start_period: 10s
-      # No `ports:` — PostgreSQL is reachable only from other services on this
-      # Compose network, never from the host or the internet.
-      logging: &logging
-        driver: json-file
-        options:
-          max-size: "10m"
-          max-file: "3"
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
-    app:
-      build: .
-      image: molecular-discovery:latest
-      restart: unless-stopped
-      init: true
-      depends_on:
-        postgres:
-          condition: service_healthy
-      environment:
-        APP_ENV: ${APP_ENV:-demo}
-        # Host is the Compose service name, not localhost.
-        DATABASE_URL: postgresql://${POSTGRES_USER:-mdp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-molecular_discovery}
-        DATA_DIR: /var/lib/mdp
-        PORT: ${PORT:-8008}
-        LOG_LEVEL: ${LOG_LEVEL:-INFO}
-        CORS_ORIGINS: ${CORS_ORIGINS:-}
-        MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-128}
-        STAGE_DELAY_SECONDS: ${STAGE_DELAY_SECONDS:-0.8}
-        ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
-        RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
-        DB_WAIT_TIMEOUT_SECONDS: ${DB_WAIT_TIMEOUT_SECONDS:-60}
-      # ports:
-      #   - "${PORT:-8008}:${PORT:-8008}"
-      volumes:
-        # Run artifacts (PDB/SDF/stage outputs) and stored uploads. A named
-        # volume survives container recreation. See docs/DEPLOYMENT.md for a
-        # host bind-mount alternative.
-        - mdp_data:/var/lib/mdp
-      networks:
-        - molecular-discovery-network
-        - caddy-proxy
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-molecular_discovery}
+      POSTGRES_USER: ${POSTGRES_USER:-mdp}
+      # No default on purpose: Compose refuses to start until it is set.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env file}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - molecular-discovery-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    # No `ports:` — PostgreSQL is reachable only from services on the private molecular-discovery-network.
+    logging: *logging
 
-      # Readiness (database reachable, schema current), not just liveness.
-      healthcheck:
-        test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/ready' % os.environ.get('PORT', '8008'), timeout=3)"]
-        interval: 15s
-        timeout: 5s
-        retries: 3
-        start_period: 40s
-      # Hardening: nothing in the app writes outside DATA_DIR and /tmp.
-      read_only: true
-      tmpfs:
-        - /tmp
-      security_opt:
-        - no-new-privileges:true
-      cap_drop:
-        - ALL
-      logging: *logging
+  app:
+    build: .
+    image: molecular-discovery:latest
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      # Host is the Compose service name, not localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mdp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-molecular_discovery}
+      DATA_DIR: /var/lib/mdp
+      PORT: ${PORT:-8008}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-128}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      DB_WAIT_TIMEOUT_SECONDS: ${DB_WAIT_TIMEOUT_SECONDS:-60}
+      # Scientific tools. Vina is baked into the image. BioSolveIT tools are only present where the
+      # environment override mounts them (never in the image); absent tools are reported as unavailable.
+      VINA_BIN: /usr/local/bin/vina
+      TOOLS_DIR: /opt/molecular-tools
+      BIOSOLVE_LICENSE_FILE: /etc/biosolveit
+      # Workflow limits — tune to the machine (see each override for its default).
+      CPU_BUDGET: ${CPU_BUDGET:-4}
+      MAX_PARALLEL_BATCHES: ${MAX_PARALLEL_BATCHES:-1}
+      BATCH_SIZE: ${BATCH_SIZE:-10}
+      BATCH_TIMEOUT_SECONDS: ${BATCH_TIMEOUT_SECONDS:-1800}
+      MAX_BATCH_ATTEMPTS: ${MAX_BATCH_ATTEMPTS:-3}
+    volumes:
+      # Run artifacts (poses, SDF, logs), uploads and the ZINC cache.
+      - mdp_data:/var/lib/mdp
+      # Vendor tools + licence, read-only, from the host (installed by scripts/install_tools.sh). Never copied
+      # into an image. Missing/empty folders simply mean those tools are reported "not installed".
+      # `z` relabels for SELinux hosts and is ignored elsewhere; set MOUNT_OPTS=ro if you must not relabel.
+      - ${TOOLS_HOST_DIR:-${HOME}/.local/share/molecular-tools}:/opt/molecular-tools:${MOUNT_OPTS:-ro,z}
+      - ${LICENSE_HOST_DIR:-${HOME}/.config/biosolveit}:/etc/biosolveit:${MOUNT_OPTS:-ro,z}
+    networks:
+      - molecular-discovery-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/ready' % os.environ.get('PORT', '8008'), timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    # Hardening: nothing in the app writes outside DATA_DIR and /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 30s   # lets the runner stop batches and kill tool subprocesses cleanly
+    logging: *logging
 
-  volumes:
-    pgdata:
-    mdp_data:
+volumes:
+  pgdata:
+  mdp_data:
 
-  networks:
-    molecular-discovery-network:
-      name: molecular-discovery-network
-
-    caddy-proxy:
-      external: true
-      name: n8n-stack_default
+networks:
+  # Key kept as in the first release so existing deployments upgrade in place (Compose rejects a renamed key).
+  molecular-discovery-network:
+    name: molecular-discovery-network

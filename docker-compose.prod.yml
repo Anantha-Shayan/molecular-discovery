@@ -1,0 +1,44 @@
+# Production / company Linux server override. The base file already mounts the BioSolveIT tools and licence
+# READ-ONLY from TOOLS_HOST_DIR / LICENSE_HOST_DIR (set both in .env.prod, e.g. /opt/molecular-tools and
+# /etc/biosolveit) — never copied into an image or the repository. This file adds the production defaults
+# (CPU budget, a localhost/LAN app port) and an OPTIONAL bundled Caddy reverse proxy (the API has no
+# authentication of its own, so something must sit in front of it before anyone but you can reach it).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Host layout: tools under TOOLS_HOST_DIR (one folder per tool, mode a+rX), the .lic under LICENSE_HOST_DIR
+# (readable by uid/gid 10001). `scripts/install_tools.sh` creates exactly this layout. See docs/DEPLOYMENT.md
+# for the Caddy pre-flight check (port 80/443 availability) and setup steps — do that check BEFORE `up -d`
+# if the server might already run nginx/Apache/another proxy: Docker will simply fail to bind an already-used
+# port (the caddy container won't start) rather than disturb whatever is already listening, but check first.
+
+services:
+  app:
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      CPU_BUDGET: ${CPU_BUDGET:-8}
+      MAX_PARALLEL_BATCHES: ${MAX_PARALLEL_BATCHES:-2}
+    # Direct access, bypassing Caddy — handy for an SSH-tunnelled debug session. Caddy (below) is the
+    # normal entrypoint once it's configured; this does not conflict with it (different ports).
+    # Default: reachable only from the server itself. Set BIND_ADDRESS=0.0.0.0 to expose it on the LAN.
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8008}:${PORT:-8008}"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:${MOUNT_OPTS:-ro,z}
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - molecular-discovery-network
+
+volumes:
+  caddy_data:
+  caddy_config:

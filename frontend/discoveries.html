@@ -4,12 +4,8 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Discoveries — Molecular Discovery Platform</title>
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="assets/tokens.js"></script>
+<link href="assets/tailwind.css" rel="stylesheet"/>
+<link href="assets/fonts.css" rel="stylesheet"/>
 <link href="assets/app.css" rel="stylesheet"/>
 </head>
 <body class="bg-background font-body-default text-on-surface antialiased">
@@ -74,7 +70,7 @@
             <tr class="font-label-caps text-label-caps text-outline uppercase tracking-wider bg-surface-container-low/60">
               <th class="px-space-md py-space-sm">Run</th>
               <th class="px-space-md py-space-sm">Target</th>
-              <th class="px-space-md py-space-sm">Source</th>
+              <th class="px-space-md py-space-sm">Engine · library</th>
               <th class="px-space-md py-space-sm">Status</th>
               <th class="px-space-md py-space-sm text-right">Candidates</th>
               <th class="px-space-md py-space-sm text-right">Created</th>
@@ -90,14 +86,14 @@
     <div class="bg-surface-container-low p-space-md rounded border-l-2 border-primary space-y-space-2xs">
       <div class="flex items-center gap-space-xs text-primary font-mono-sm text-mono-sm font-semibold">
         <span class="material-symbols-outlined text-[16px]">info</span>
-        WHAT THIS APPLICATION IS
+        WHAT IS REAL IN THIS APPLICATION
       </div>
       <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-        An integration and orchestration MVP. Target intake, PDB validation, job
-        creation, pipeline execution, molecule persistence, SA scoring and SDF
-        export are real. Chemical-space screening, ADMET, binding affinity and
-        unbinding kinetics are deterministic demo adapters standing in for
-        partner engines, and are labelled as such everywhere they appear.
+        Every campaign here runs real software: AutoDock Vina (and BioSolveIT FlexX where installed)
+        for docking, BioSolveIT HYDE for re-scoring, RDKit for synthetic accessibility and the ADMET-AI
+        model for ADMET. Binding affinity and unbinding kinetics (Koffee) are still placeholders and are
+        labelled as such wherever they appear. Results are computational predictions to prioritise
+        compounds for lab testing, not proof that a molecule works.
       </p>
     </div>
 
@@ -110,12 +106,13 @@
   const STATUS_STYLE = {
     COMPLETE: "bg-secondary-container/60 text-on-secondary-container",
     FAILED: "bg-error-container text-on-error-container",
-    SUBMITTED: "bg-surface-container text-on-surface-variant",
+    QUEUED: "bg-surface-container text-on-surface-variant",
+    CANCELLED: "bg-warning-container text-warning",
   };
 
   function statusChip(status) {
     const style = STATUS_STYLE[status] || "bg-surface-container-high text-primary";
-    const pulse = ["COMPLETE", "FAILED", "SUBMITTED"].includes(status)
+    const pulse = ["COMPLETE", "FAILED", "QUEUED", "CANCELLED"].includes(status)
       ? ""
       : '<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>';
     return `<span class="inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded font-mono-sm text-mono-sm font-medium ${style}">${pulse}${status}</span>`;
@@ -136,7 +133,7 @@
             <div class="font-mono-sm text-mono-sm text-outline">${job.pdb_id ? "PDB " + esc(job.pdb_id) : "—"}</div>
           </td>
           <td class="px-space-md py-space-sm font-mono-sm text-mono-sm text-on-surface-variant">
-            ${SOURCE_LABEL[job.target_source] || "—"}
+            ${esc(job.engine === "flexx" ? "FlexX" : "Vina")} · ${esc(job.library_source)}
           </td>
           <td class="px-space-md py-space-sm">${statusChip(job.status)}</td>
           <td class="px-space-md py-space-sm text-right font-mono-data text-mono-data text-on-surface">${fmt.int(job.candidate_count)}</td>

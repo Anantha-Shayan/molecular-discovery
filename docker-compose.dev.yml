@@ -1,0 +1,21 @@
+# Local development override: PostgreSQL + app in containers on your machine, tools/licence mounted from your home
+# directory (defaults from scripts/install_tools.sh), code bind-mounted so edits apply after `docker compose restart app`.
+# (The lighter alternative without Docker is ./scripts/dev.sh with SQLite.)
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev up -d --build
+
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${DB_HOST_PORT:-5433}:5432"   # for psql / DB tools on the host only
+  app:
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      CPU_BUDGET: ${CPU_BUDGET:-8}
+      MAX_PARALLEL_BATCHES: ${MAX_PARALLEL_BATCHES:-2}
+    ports:
+      - "127.0.0.1:${PORT:-8008}:${PORT:-8008}"
+    volumes:
+      - ./backend:/app/backend:ro,z
+      - ./frontend:/app/frontend:ro,z

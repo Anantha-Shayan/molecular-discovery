@@ -13,25 +13,13 @@ frontend needs to change.
 """
 from __future__ import annotations
 
-import time
-
-from ..config import settings
 from ..stages import mocks, sa_scoring
 from .base import ServiceInfo, TargetContext
 
-# Mocked stages return instantly, which makes the pipeline finish before the
-# UI can render a single state change. A small deliberate delay makes the
-# orchestration visible during a demo. It applies ONLY to mocked stages —
-# real SA scoring is never artificially slowed — and tests set it to 0.
 
 
 def pace(delay: float | None) -> None:
-    """Sleep once for a mocked stage. Called by the orchestrator per STAGE,
-    not per molecule — pacing every call would make run time scale with
-    library size and turn a few-second demo into a minute-long one."""
-    seconds = settings.stage_delay_seconds if delay is None else delay
-    if seconds > 0:
-        time.sleep(seconds)
+    """No-op kept for adapter signatures: mocked stages are no longer artificially slowed."""
 
 
 class ChemicalSpaceScreeningService:

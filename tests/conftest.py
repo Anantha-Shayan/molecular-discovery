@@ -37,8 +37,18 @@ os.environ["DATA_DIR"] = os.path.join(_TMP, "data")
 os.environ["DATABASE_URL"] = (
     os.environ.get("TEST_DATABASE_URL") or f"sqlite:///{os.path.join(_TMP, 'test.db')}"
 )
-os.environ["STAGE_DELAY_SECONDS"] = "0"
 os.environ.pop("CORS_ORIGINS", None)
+
+# Tool locations are machine specific. Let `pytest -m real` find the local tools
+# through the same git-ignored file the dev server uses. Only tool keys are read;
+# DATA_DIR/DATABASE_URL stay isolated above.
+_TOOL_KEYS = {"TOOLS_DIR", "VINA_BIN", "FLEXX_BIN", "HYDESCORER_BIN", "FASTGROW_BIN", "BIOSOLVE_LICENSE_FILE"}
+_local = os.path.join(REPO_ROOT, ".env.local")
+if os.path.exists(_local):
+    for _line in open(_local):
+        _k, _, _v = _line.strip().partition("=")
+        if _k in _TOOL_KEYS and _k not in os.environ and _v:
+            os.environ[_k] = _v
 
 
 @pytest.fixture(scope="session")
@@ -73,9 +83,3 @@ def lenient_client(client):
 
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
-
-
-@pytest.fixture
-def no_delay():
-    """Config fragment that disables the demo's per-stage pacing."""
-    return {"stage_delay_seconds": 0}

@@ -121,12 +121,3 @@ def test_pdb_id_route_serves_the_demo_id_without_network(client):
     assert body["atom_count"] == 1690
 
 
-def test_engines_endpoint_reports_real_and_mocked(client):
-    engines = client.get("/api/engines").json()
-    by_key = {engine["key"]: engine for engine in engines}
-
-    assert by_key["sa"]["is_mocked"] is False
-    assert "RDKit" in by_key["sa"]["backend"]
-    for key in ("screening", "admet", "affinity", "kinetics"):
-        assert by_key[key]["is_mocked"] is True
-        assert by_key[key]["note"]

@@ -1,0 +1,16 @@
+# Required edits before first use on the company server:
+#   1. Replace the site address below with the server's real DNS name (gives automatic HTTPS via
+#      Let's Encrypt) — or leave it as ":80" for an internal-only hostname/IP with no public DNS.
+#   2. Generate a password hash and paste it in place of REPLACE_WITH_HASH:
+#        docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod \
+#          exec caddy caddy hash-password
+#   3. Apply the change: docker compose ... restart caddy
+# See docs/DEPLOYMENT.md "Caddy" section for the full walkthrough.
+
+:80 {
+	basic_auth {
+		admin REPLACE_WITH_HASH
+	}
+
+	reverse_proxy app:8008
+}

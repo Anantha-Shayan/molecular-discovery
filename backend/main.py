@@ -3,17 +3,17 @@ from __future__ import annotations
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, Response, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
-from . import models, pipeline, schemas, services, storage
+from . import models, schemas, storage
 from .config import settings
 from .database import check_connection, get_session, init_db
+from .campaign.runner import runner
 from .logging_config import configure_logging, get_logger
-from .stages import depiction
 from .targets import service as target_service
 
 configure_logging()
@@ -27,17 +27,15 @@ async def lifespan(_app: FastAPI):
         "starting",
         extra={"status": f"env={settings.app_env} db={settings.safe_database_url}"},
     )
-    # Pipelines run inside this process, so a restart abandons any run that
-    # was in flight. Mark those failed rather than leaving them "running"
-    # forever. Safe because exactly one app process is supported (see
-    # docs/DEPLOYMENT.md). Never fatal: /ready reports DB problems.
+    # Campaigns execute in this process (one at a time). Anything left
+    # running by a previous crash/restart is put back in the queue and
+    # resumed from its saved batches; nothing finished is repeated.
     try:
-        interrupted = pipeline.fail_interrupted_jobs()
-        if interrupted:
-            log.warning("marked %d interrupted job(s) as failed", interrupted)
-    except Exception as exc:  # noqa: BLE001
-        log.warning("could not check for interrupted jobs: %s", exc.__class__.__name__)
+        runner.start()
+    except Exception as exc:  # noqa: BLE001 - never fatal: /ready reports DB problems
+        log.warning("campaign runner failed to start: %s", exc.__class__.__name__)
     yield
+    runner.stop()
 
 
 _docs = settings.enable_api_docs
@@ -153,22 +151,6 @@ def ready():
     )
 
 
-STAGE_INDEX = {None: 0, "screening": 1, "sa": 2, "admet": 3, "affinity": 4, "kinetics": 5}
-STAGE_META = {
-    "screening": ("02", "CHEMICAL SPACE", "Demo Library Screening", "hits", True),
-    "sa": ("03", "SYNTHETIC ACCESSIBILITY", "SA Score Filter", "feasible", False),
-    "admet": ("04", "ADMET", "ADMET Prediction", "passed", True),
-    "affinity": ("05", "BINDING AFFINITY", "Kd & ΔG Ranking", "shortlisted", True),
-    "kinetics": ("06", "UNBINDING KINETICS", "koff & Residence Time τ", "active", True),
-}
-STAGE_BADGE = {
-    "screening": "demo library (mocked)",
-    "sa": "RDKit — real",
-    "admet": "220+ props (mocked)",
-    "affinity": "CPU / Docker (mocked)",
-    "kinetics": "GPU / Docker (mocked)",
-}
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -217,52 +199,6 @@ def _target_response(target: models.Target) -> schemas.TargetResponse:
         created_at=_iso(target.created_at),
     )
 
-
-def _stage_counts(session, job_id: str) -> dict[str, dict[str, int]]:
-    """Per-stage {in, out} counts, read from StageResult.payload['passed']."""
-    counts: dict[str, dict[str, int]] = {}
-    for stage in pipeline.STAGE_SEQUENCE:
-        rows = session.execute(
-            select(models.StageResult).where(
-                models.StageResult.job_id == job_id,
-                models.StageResult.stage == stage,
-            )
-        ).scalars().all()
-        passed = sum(1 for row in rows if (row.payload or {}).get("passed", True))
-        counts[stage] = {"in": len(rows), "out": passed}
-    return counts
-
-
-def _latest_payloads(session, molecule_id: str) -> dict[str, dict]:
-    rows = session.execute(
-        select(models.StageResult).where(models.StageResult.molecule_id == molecule_id)
-    ).scalars().all()
-    out: dict[str, dict] = {}
-    for r in rows:
-        out[r.stage] = r.payload
-    return out
-
-
-def _stage_details(session, job_id: str) -> dict[str, str]:
-    rows = session.execute(
-        select(models.JobStageLog).where(models.JobStageLog.job_id == job_id)
-    ).scalars().all()
-    details: dict[str, str] = {}
-    for row in rows:
-        if row.detail and row.status in ("SUCCEEDED", "SKIPPED", "FAILED"):
-            details[row.stage] = row.detail
-    return details
-
-
-def _skipped_stages(config: dict) -> set[str]:
-    skipped = set()
-    if not config.get("enable_admet", True):
-        skipped.add("admet")
-    if not config.get("enable_affinity", True):
-        skipped.add("affinity")
-    if not config.get("enable_kinetics", True):
-        skipped.add("kinetics")
-    return skipped
 
 
 # ---------------------------------------------------------------------------
@@ -359,356 +295,9 @@ def get_target_structure(target_id: str):
         return Response(content=text, media_type="chemical/x-pdb")
 
 
-@app.get("/api/engines", response_model=list[schemas.EngineInfo])
-def list_engines():
-    """Which stage engines are real and which are demo adapters."""
-    return services.describe_all()
+from .api_jobs import router as jobs_router  # noqa: E402
 
-
-# ---------------------------------------------------------------------------
-# Jobs
-# ---------------------------------------------------------------------------
-@app.post("/api/jobs", response_model=schemas.JobStatusResponse)
-def create_job(req: schemas.CreateJobRequest, background_tasks: BackgroundTasks):
-    with get_session() as session:
-        if req.target_id:
-            target = _target_or_404(session, req.target_id)
-            if req.selected_chain:
-                target.selected_chain = req.selected_chain
-                session.flush()
-        else:
-            # Legacy contract: name/PDB-ID only, no structure file.
-            target = models.Target(
-                name=req.target_name or "Unnamed target",
-                source="pdb_id" if req.pdb_id else "upload",
-                pdb_id=req.pdb_id,
-                validation_status="NOT_VALIDATED",
-                validation_checks=[],
-            )
-            session.add(target)
-            session.flush()
-
-        run_tag = req.run_tag or target.id[:4].upper()
-        params = {
-            "run_tag": run_tag,
-            "library_limit": req.library_limit,
-            "sa_threshold": req.sa_threshold,
-            "enable_admet": req.enable_admet,
-            "enable_affinity": req.enable_affinity,
-            "enable_kinetics": req.enable_kinetics,
-            "strict_admet_gate": req.strict_admet_gate,
-            "affinity_shortlist": req.affinity_shortlist,
-        }
-        if req.stage_delay_seconds is not None:
-            params["stage_delay_seconds"] = req.stage_delay_seconds
-
-        job = models.Job(
-            target_id=target.id,
-            status="SUBMITTED",
-            label=req.label or f"RUN-{run_tag}",
-            params=params,
-        )
-        session.add(job)
-        session.flush()
-        job_id = job.id
-
-    def _run(job_id: str = job_id):
-        with get_session() as bg_session:
-            pipeline.run_pipeline(bg_session, job_id)
-
-    # Returns immediately; the pipeline runs after the response is sent.
-    background_tasks.add_task(_run)
-    return get_job_status(job_id)
-
-
-@app.get("/api/jobs", response_model=schemas.JobListResponse)
-def list_jobs(limit: int = 50):
-    with get_session() as session:
-        jobs = session.execute(
-            select(models.Job).order_by(models.Job.created_at.desc()).limit(limit)
-        ).scalars().all()
-
-        summaries: list[schemas.JobSummary] = []
-        for job in jobs:
-            target = session.get(models.Target, job.target_id)
-            kinetics = session.execute(
-                select(models.StageResult).where(
-                    models.StageResult.job_id == job.id,
-                    models.StageResult.stage == "kinetics",
-                )
-            ).scalars().all()
-            summaries.append(
-                schemas.JobSummary(
-                    job_id=job.id,
-                    label=job.label,
-                    status=job.status,
-                    current_stage=job.current_stage,
-                    target_name=target.name if target else "—",
-                    pdb_id=target.pdb_id if target else None,
-                    target_source=target.source if target else None,
-                    candidate_count=len(kinetics),
-                    created_at=_iso(job.created_at),
-                )
-            )
-        return schemas.JobListResponse(jobs=summaries)
-
-
-@app.get("/api/jobs/{job_id}", response_model=schemas.JobStatusResponse)
-def get_job_status(job_id: str):
-    with get_session() as session:
-        job = _job_or_404(session, job_id)
-        target = session.get(models.Target, job.target_id)
-        counts = _stage_counts(session, job_id)
-        details = _stage_details(session, job_id)
-        config = pipeline.resolve_params(job.params)
-        skipped = _skipped_stages(config)
-
-        current_idx = (
-            6 if job.status == "COMPLETE" else STAGE_INDEX.get(job.current_stage, 0)
-        )
-
-        stages: list[schemas.StageCard] = [
-            schemas.StageCard(
-                stage_no=1,
-                key="target",
-                label="TARGET",
-                subtitle="Protein / PDB",
-                count=1,
-                count_label="Target",
-                badge="Input",
-                status="done",
-                is_mocked=False,
-                detail=details.get("target"),
-            )
-        ]
-
-        for stage_key in pipeline.STAGE_SEQUENCE:
-            no, label, subtitle, count_label, is_mocked = STAGE_META[stage_key]
-            idx = STAGE_INDEX[stage_key]
-            if job.status == "FAILED" and job.current_stage == stage_key:
-                status = "failed"
-            elif stage_key in skipped:
-                status = "skipped"
-            elif idx < current_idx:
-                status = "done"
-            elif idx == current_idx and job.status != "COMPLETE":
-                status = "active"
-            else:
-                status = "done" if job.status == "COMPLETE" else "pending"
-
-            scale_note = (
-                f"Conceptual chemical space: 10T+. This run screens a "
-                f"{config['library_limit']}-compound demo library."
-                if stage_key == "screening"
-                else None
-            )
-            stage_counts = counts.get(stage_key, {"in": 0, "out": 0})
-            stages.append(
-                schemas.StageCard(
-                    stage_no=int(no),
-                    key=stage_key,
-                    label=label,
-                    subtitle=subtitle,
-                    count=stage_counts["out"] or None if status == "pending" else stage_counts["out"],
-                    count_label=count_label,
-                    badge=STAGE_BADGE[stage_key],
-                    status=status,
-                    is_mocked=is_mocked,
-                    scale_note=scale_note,
-                    count_in=stage_counts["in"],
-                    count_out=stage_counts["out"],
-                    detail=details.get(stage_key),
-                )
-            )
-
-        retained = counts.get("kinetics", {}).get("out", 0)
-        stages.append(
-            schemas.StageCard(
-                stage_no=7,
-                key="candidates",
-                label="CANDIDATES",
-                subtitle="Ranked Output",
-                count=retained if job.status == "COMPLETE" else None,
-                count_label="leads",
-                badge="Output",
-                status="done" if job.status == "COMPLETE" else "pending",
-                is_mocked=False,
-            )
-        )
-
-        return schemas.JobStatusResponse(
-            job_id=job.id,
-            status=job.status,
-            current_stage=job.current_stage,
-            target_name=target.name if target else "—",
-            pdb_id=target.pdb_id if target else None,
-            stages=stages,
-            retained=retained,
-            target=_target_response(target) if target else None,
-            config=config,
-            engines=services.describe_all(),
-            label=job.label,
-            created_at=_iso(job.created_at),
-            updated_at=_iso(job.updated_at),
-            failure_reason=job.failure_reason,
-        )
-
-
-@app.get("/api/jobs/{job_id}/candidates", response_model=schemas.CandidateListResponse)
-def list_candidates(job_id: str):
-    with get_session() as session:
-        _job_or_404(session, job_id)
-        molecules = session.execute(
-            select(models.Molecule)
-            .where(models.Molecule.job_id == job_id)
-            .order_by(models.Molecule.display_id)
-        ).scalars().all()
-
-        rows: list[schemas.CandidateRow] = []
-        for mol in molecules:
-            by_stage = _latest_payloads(session, mol.id)
-            if "kinetics" not in by_stage:
-                continue  # only show molecules that made it through the full pipeline
-
-            sa = by_stage.get("sa", {})
-            admet = by_stage.get("admet", {})
-            aff = by_stage.get("affinity", {})
-            kin = by_stage.get("kinetics", {})
-
-            status = pipeline.classify_status(
-                sa.get("sa_score", 10),
-                admet.get("profile", "Moderate"),
-                kin.get("residence_time_min", 0),
-            )
-            rows.append(
-                schemas.CandidateRow(
-                    molecule_id=mol.id,
-                    display_id=mol.display_id,
-                    rank=0,  # assigned after sort
-                    smiles=mol.smiles,
-                    structure_svg=depiction.svg_for_smiles(mol.smiles),
-                    molecular_weight=sa.get("molecular_weight", 0.0),
-                    sa_score=sa.get("sa_score", 0.0),
-                    admet_profile=admet.get("profile", "Unknown"),
-                    kd_nm=aff.get("kd_nm", 0.0),
-                    koff_per_s=kin.get("koff_per_s", 0.0),
-                    residence_time_min=kin.get("residence_time_min", 0.0),
-                    status=status,
-                )
-            )
-
-        # display_id breaks ties so ranking is deterministic on any database.
-        rows.sort(key=lambda r: (-r.residence_time_min, r.display_id))
-        for i, row in enumerate(rows, start=1):
-            row.rank = i
-
-        return schemas.CandidateListResponse(job_id=job_id, candidates=rows)
-
-
-@app.get("/api/jobs/{job_id}/candidates.sdf")
-def export_job_sdf(job_id: str):
-    """All final candidates for a run as one real RDKit-generated SDF."""
-    with get_session() as session:
-        _job_or_404(session, job_id)
-        molecules = session.execute(
-            select(models.Molecule)
-            .where(models.Molecule.job_id == job_id)
-            .order_by(models.Molecule.display_id)
-        ).scalars().all()
-
-        records = []
-        for mol in molecules:
-            by_stage = _latest_payloads(session, mol.id)
-            if "kinetics" not in by_stage:
-                continue
-            records.append(
-                depiction.sdf_for_candidate(
-                    mol.smiles, mol.display_id, pipeline._sdf_properties(by_stage)
-                )
-            )
-        if not records:
-            raise HTTPException(status_code=404, detail="No final candidates for this job yet")
-
-        return Response(
-            content="".join(records),
-            media_type="chemical/x-mdl-sdfile",
-            headers={
-                "Content-Disposition": f'attachment; filename="{job_id[:8]}-candidates.sdf"'
-            },
-        )
-
-
-@app.get("/api/candidates/{molecule_id}", response_model=schemas.CandidateDetailResponse)
-def get_candidate_detail(molecule_id: str):
-    with get_session() as session:
-        mol = session.get(models.Molecule, molecule_id)
-        if mol is None:
-            raise HTTPException(status_code=404, detail="Molecule not found")
-
-        by_stage = _latest_payloads(session, molecule_id)
-        sa = by_stage.get("sa", {})
-        admet = by_stage.get("admet", {})
-        aff = by_stage.get("affinity", {})
-        kin = by_stage.get("kinetics", {})
-
-        status = pipeline.classify_status(
-            sa.get("sa_score", 10), admet.get("profile", "Moderate"),
-            kin.get("residence_time_min", 0),
-        )
-
-        job = session.get(models.Job, mol.job_id)
-        target = session.get(models.Target, job.target_id) if job else None
-        target_label = target.name if target else "Protein target"
-        if target and target.pdb_id:
-            target_label = f"{target.name} ({target.pdb_id})"
-
-        provenance = [
-            schemas.ProvenanceStep(label=f"Protein Target — {target_label}", is_mocked=False),
-            schemas.ProvenanceStep(label="Chemical Space (demo library, mocked)", is_mocked=True),
-            schemas.ProvenanceStep(
-                label=f"SA Filter (RDKit, real) — score {sa.get('sa_score', '?')}", is_mocked=False
-            ),
-            schemas.ProvenanceStep(label="ADMET Prediction (mocked)", is_mocked=True),
-            schemas.ProvenanceStep(label="Binding Affinity (mocked)", is_mocked=True),
-            schemas.ProvenanceStep(label="Unbinding Kinetics (mocked)", is_mocked=True),
-            schemas.ProvenanceStep(label=f"Candidate {mol.display_id} — {status}", is_mocked=False),
-        ]
-
-        return schemas.CandidateDetailResponse(
-            molecule_id=mol.id,
-            display_id=mol.display_id,
-            smiles=mol.smiles,
-            structure_svg=depiction.svg_for_smiles(mol.smiles, width=230, height=150),
-            molecular_weight=sa.get("molecular_weight", 0.0),
-            sa_score=sa.get("sa_score", 0.0),
-            admet_profile=admet.get("profile", "Unknown"),
-            admet_property_count=admet.get("property_count", 0),
-            kd_nm=aff.get("kd_nm", 0.0),
-            delta_g_kcal_mol=aff.get("delta_g_kcal_mol", 0.0),
-            koff_per_s=kin.get("koff_per_s", 0.0),
-            residence_time_min=kin.get("residence_time_min", 0.0),
-            status=status,
-            provenance=provenance,
-        )
-
-
-@app.get("/api/candidates/{molecule_id}/sdf")
-def export_candidate_sdf(molecule_id: str):
-    with get_session() as session:
-        mol = session.get(models.Molecule, molecule_id)
-        if mol is None:
-            raise HTTPException(status_code=404, detail="Molecule not found")
-        by_stage = _latest_payloads(session, molecule_id)
-        sdf_text = depiction.sdf_for_candidate(
-            mol.smiles, mol.display_id, pipeline._sdf_properties(by_stage)
-        )
-        return Response(
-            content=sdf_text,
-            media_type="chemical/x-mdl-sdfile",
-            headers={
-                "Content-Disposition": f'attachment; filename="{mol.display_id}.sdf"'
-            },
-        )
+app.include_router(jobs_router)
 
 
 # ---------------------------------------------------------------------------
