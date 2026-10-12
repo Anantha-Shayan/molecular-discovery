@@ -97,6 +97,20 @@ def test_admet_ai_predicts_known_properties():
     assert len(r[0]["values"]) >= 25
 
 
+def test_admet_ai_handles_duplicate_smiles_without_crashing():
+    """Regression test: the model's own result frame is indexed BY SMILES, so a duplicate input
+    SMILES used to make a label lookup (`df.loc[smi]`) return several rows instead of one and
+    crash with a TypeError deep inside pandas. Results must come back one-per-input, in order,
+    not one-per-unique-SMILES."""
+    from backend.science import admet
+    aspirin = "CC(=O)Oc1ccccc1C(=O)O"
+    caffeine = "CN1C=NC2=C1C(=O)N(C(=O)N2C)C"
+    r = admet.predict([aspirin, caffeine, aspirin, aspirin], threads=2)
+    assert len(r) == 4
+    assert r[0]["values"] == r[2]["values"] == r[3]["values"]
+    assert r[1]["values"] != r[0]["values"]
+
+
 def test_flexx_docks_and_scores_a_small_batch_FOR_LICENSED_EXECUTION(prepared, tmp_path):
     """Runs only where the FlexX executable + valid licence exist (e.g. the company server)."""
     from backend.science.engines.flexx import FlexxEngine
