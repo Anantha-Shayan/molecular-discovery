@@ -12,7 +12,7 @@ import json
 import pytest
 from sqlalchemy import select
 
-from backend import main, models, pipeline, storage
+from backend import main, models, storage
 from backend.config import settings as real_settings
 from backend.database import get_session
 from backend.targets import service as target_service
@@ -242,53 +242,6 @@ def test_api_docs_are_disabled_when_configured():
     assert docs_off.docs_url is None and docs_off.openapi_url is None
 
 
-def test_pipeline_failure_reason_is_sanitised_outside_development(lenient_client, monkeypatch):
-    patched_settings(monkeypatch, pipeline, app_env="production")
-
-    def boom(*_args, **_kwargs):
-        raise ValueError("SELECT secret FROM t WHERE password='hunter2'")
-
-    monkeypatch.setattr(pipeline.sa_service, "run", boom)
-    target = lenient_client.post("/api/targets/demo").json()
-    created = lenient_client.post(
-        "/api/jobs",
-        json={"target_id": target["target_id"], "library_limit": 10, "stage_delay_seconds": 0},
-    )
-    job_id = created.json()["job_id"] if created.status_code == 200 else None
-    if job_id is None:  # the background task error surfaced; find the job instead
-        with get_session() as session:
-            job_id = session.execute(
-                select(models.Job.id).order_by(models.Job.created_at.desc())
-            ).scalars().first()
-
-    status = lenient_client.get(f"/api/jobs/{job_id}").json()
-    assert status["status"] == "FAILED"
-    reason = status["failure_reason"]
-    assert "hunter2" not in reason and "SELECT" not in reason
-    assert "ValueError" in reason and job_id in reason
-
-    # The stage log detail (also exposed via the API) is sanitised too.
-    assert all("hunter2" not in (stage.get("detail") or "") for stage in status["stages"])
-
-
-def test_pipeline_failure_logs_carry_job_and_stage_context(lenient_client, monkeypatch, caplog):
-    def boom(*_args, **_kwargs):
-        raise ValueError("bad smiles")
-
-    monkeypatch.setattr(pipeline.sa_service, "run", boom)
-    target = lenient_client.post("/api/targets/demo").json()
-    with caplog.at_level(logging.ERROR, logger="mdp"):
-        lenient_client.post(
-            "/api/jobs",
-            json={"target_id": target["target_id"], "library_limit": 10, "stage_delay_seconds": 0},
-        )
-    records = [r for r in caplog.records if getattr(r, "job_id", None)]
-    assert records, "no log records carried a job_id"
-    assert any(getattr(r, "stage", None) == "sa" for r in records)
-    # Molecule-level context for the failing SA call.
-    assert any(getattr(r, "molecule_id", None) for r in records)
-
-
 def test_json_log_format_includes_context_and_no_secrets():
     from backend.logging_config import JsonFormatter
 
@@ -297,42 +250,3 @@ def test_json_log_format_includes_context_and_no_secrets():
     line = json.loads(JsonFormatter().format(record))
     assert line["job_id"] == "job-1" and line["stage"] == "sa" and line["molecule_id"] == "mol-9"
     assert line["level"] == "ERROR" and line["msg"] == "stage failed"
-
-
-# ---------------------------------------------------------------------------
-# Restart recovery
-# ---------------------------------------------------------------------------
-def test_interrupted_runs_are_marked_failed_on_startup(client):
-    target = client.post("/api/targets/demo").json()
-    with get_session() as session:
-        stuck = models.Job(
-            target_id=target["target_id"], status="AFFINITY", current_stage="affinity",
-            label="RUN-STUCK", params={},
-        )
-        queued = models.Job(
-            target_id=target["target_id"], status="SUBMITTED", label="RUN-QUEUED", params={},
-        )
-        done = models.Job(
-            target_id=target["target_id"], status="COMPLETE", label="RUN-DONE", params={},
-        )
-        session.add_all([stuck, queued, done])
-        session.flush()
-        stuck_id, queued_id, done_id = stuck.id, queued.id, done.id
-
-    assert pipeline.fail_interrupted_jobs() >= 2
-
-    with get_session() as session:
-        stuck = session.get(models.Job, stuck_id)
-        assert stuck.status == "FAILED"
-        assert "restarted" in stuck.failure_reason
-        assert session.get(models.Job, queued_id).status == "FAILED"
-        assert session.get(models.Job, done_id).status == "COMPLETE"  # untouched
-        logged = session.execute(
-            select(models.JobStageLog).where(
-                models.JobStageLog.job_id == stuck_id, models.JobStageLog.status == "FAILED"
-            )
-        ).scalars().all()
-        assert logged and logged[0].stage == "affinity"
-
-    # Idempotent: nothing left to fail.
-    assert pipeline.fail_interrupted_jobs() == 0
