@@ -1,172 +1,65 @@
-# UI/UX & Demo Guide
+# Evaluator guide — what this platform does, and why you can rely on it
 
-How the application is organised, what each screen demonstrates technically,
-and exactly how to walk through it in the take-home interview.
+*For a non-technical reader. Technical detail: `docs/SCIENCE_NOTES.md`; evidence: `docs/ACCEPTANCE_REPORT.md`.*
 
-## 1. Product UX philosophy
+## In one paragraph
 
-**Scientific minimalism.** The interface should read like a computational
-chemistry workstation, not a generic admin dashboard: warm off-white ground,
-deep navy type, one restrained teal accent, thin borders, monospace for IDs
-and numbers.
+You give the platform a protein and tell it where the "pocket" is. It fetches a few dozen to a few thousand
+candidate molecules, predicts how well each one fits the pocket (**docking**), double-checks the best fits with a second,
+physics-based opinion (**HYDE**), drops molecules that would be hard to make (**synthetic accessibility**) or look unsafe
+for the body (**ADMET**), and gives you a ranked shortlist with 3D structures you can download. Every step runs real
+scientific software, shows live progress, and survives restarts.
 
-Three rules drive every screen:
+## The decisions that make the results trustworthy
 
-1. **Every number on screen came from somewhere real.** Target metadata is
-   parsed from the user's file; stage counts come from the database; engine
-   badges come from the backend's own engine registry (`GET /api/engines`).
-   Nothing is typed into the HTML.
-2. **Real vs mocked is always visible.** Mocked stages carry a "mocked" or
-   "demo adapter" badge on every screen they appear on, and the mocked values
-   keep a `_mocked` suffix even inside exported SDF files.
-3. **Show the funnel, not just the answer.** The product's value is the
-   orchestration — target → stages → shrinking candidate set → provenance —
-   so the run screen leads with the per-stage in → out counts.
-
-## 2. Information architecture
-
-```
-Discoveries            (list of every run)
-  └─ New Discovery     (step 1: choose target input)
-       └─ Target Validation   (step 2: review what was parsed)
-            └─ Configure & Review   (step 3: set parameters, review, start)
-                 └─ Discovery Run   (live stage state → candidates → SDF)
-```
-
-Wizard state travels in the URL (`?target=<id>`, then `?job=<id>`), so every
-step is reloadable and linkable. No client-side store.
-
-| Page | File |
-|---|---|
-| Discoveries | `frontend/discoveries.html` |
-| New Discovery | `frontend/new-discovery.html` |
-| Target Validation | `frontend/target-validation.html` |
-| Configure & Review | `frontend/configure-review.html` |
-| Discovery Run | `frontend/dashboard.html` (existing screen, narrowly edited) |
-
-The pages are served by the FastAPI app itself (`/app/...`), so the whole demo
-is one process on one port.
-
-## 3. The screens
-
-### New Discovery
-Three ways to define a target, all converging on one backend code path
-(`parse_structure` → validate → persist):
-
-| Input | Endpoint | Notes |
+| Decision | What you see | Why it matters |
 |---|---|---|
-| Upload `.pdb/.ent/.cif/.mmcif` | `POST /api/targets/upload` | multipart; drag-and-drop supported |
-| PDB ID | `POST /api/targets/pdb-id` | fetches from RCSB; clear error if offline |
-| Demo target | `POST /api/targets/demo` | bundled fixture, works with no network |
+| **Real tools only; placeholders are labelled** | Docking (AutoDock Vina, BioSolveIT FlexX), HYDE, RDKit and the ADMET-AI model are real. Binding affinity and unbinding kinetics (Koffee) are not connected: their columns say *placeholder* and never influence a result | A number you cannot trust is worse than a blank. Nothing simulated is passed off as science |
+| **The docking method was validated first** | Re-docking the known drug-like ligand of the KRAS structure (7RPZ) put it back within **0.5 Å** of the experimental position (anything under 2 Å counts as success) | Shows the pipeline reproduces reality on a case where the answer is known |
+| **No blended "super score"** | Docking, HYDE, synthetic accessibility and ADMET sit in separate, labelled columns; **one** named measure orders the list (default: HYDE) | Scores on different scales cannot be honestly added up. The ranking rule is printed on the page |
+| **Two programs, two opinions, shown side by side** | FlexX and HYDE rank the same molecules differently (FlexX's best was HYDE's 7th in our test) | Disagreement is information. You can see it and choose the ranking measure instead of having it hidden |
+| **HYDE is read the way the company reads it** | The HYDE score and its four components (water cost and interactions, protein and molecule side) follow the company's own HYDE SDF Extractor logic, checked on real output, with a kJ/mol ↔ kcal/mol switch | Your team's reference tool and this platform give the same numbers |
+| **Every removal has a stated reason** | The *Removed by a rule* tab lists each molecule, the step that removed it and why ("SA score 5.8 above the limit of 5") | You can audit the funnel instead of trusting a black box |
+| **A safety screen that is not trigger-happy** | A toxicity alert needs a likely prediction **and** a risk higher than 90% of approved drugs | A plain 50% cut-off flagged 93% of random molecules and over half of known medicines, so it would have rejected almost everything |
+| **Existing vs. invented molecules are never mixed** | ZINC molecules are purchasable catalogue compounds. Optional FastGrow suggestions sit in their own tab, labelled *generated, not catalogue*, with a fit score that is explicitly not an affinity | Avoids over-claiming novelty or efficacy |
+| **Work is never lost or repeated** | Long runs are split into batches saved as they finish. Kill the server mid-run and it resumes where it stopped; a failed batch can be inspected (reason, tool log) and retried alone | Matches how a shared server really behaves, and saves compute |
+| **Reproducible sampling** | The *sampling seed* fixes which molecules are drawn, so a run can be repeated exactly | Auditable, comparable runs |
+| **Offline, locked-down by design** | The interface needs no internet; vendor licences are read from a protected folder, never stored in the code or in images; tools run without a shell and with a minimal environment | Safe to host on the company server |
+| **Plain-language honesty about limits** | Each screen explains terms and states uncertainty (e.g. HYDE shows an affinity *range*) | Results read as computational predictions to prioritise lab work, not proof that a molecule works |
 
-This step **does not start a run**. Its only output is a validated Target
-record plus a stored structure artifact.
-*Demonstrates:* intake is separated from execution; failures are reported
-with the specific gate that failed.
+## Where the molecules come from (and what "seed" means)
 
-### Target Validation
-Everything here is derived from the file:
+| Source | What it is | Use it for |
+|---|---|---|
+| **ZINC20 catalogue** | A public database of purchasable compounds. About 10 million molecules per downloaded file, 20 files | The realistic case: hits can be ordered and tested |
+| **Built-in known drugs** | About 40 approved drugs and scaffolds shipped with the app | Offline demos and sanity checks |
+| **My own list** | Molecules you paste (SMILES text) | An in-house or vendor library |
 
-- **3D viewer** — 3Dmol.js renders the actual stored structure text (cartoon /
-  sticks / spheres, chain selector, non-solvent HETATM shown as sticks).
-- **Structural metadata** — chains, residues, atom records, source, method,
-  resolution, ligands/cofactors, title. Fields the file doesn't state show
-  "Not stated in file" rather than a guess.
-- **Five input checks** — structure readable, atom records present, coordinates
-  detected, chains available, residues available. Each shows a computed detail
-  line (e.g. "1,690 atom records (1,342 ATOM, 348 HETATM)").
-- **Scope notice** — states plainly that this is structural input validation,
-  not an assessment of druggability or docking suitability.
+* **When are ZINC molecules downloaded?** At the start of a run, not in advance and not into the database. The platform
+  fetches the first 3 MB of one ZINC file (roughly 280,000–400,000 molecules), keeps that file on disk as a cache, and
+  reuses it later. Only the molecules of a campaign are stored in the database. The setup page shows what is already cached.
+* **How many are available?** Each cached chunk gives about 300,000–400,000 molecules; this server has 2–3 chunks cached
+  (about 0.7–1.0 million). All 20 chunks at the default size is roughly 7 million.
+* **How to download more:** `python scripts/prefetch_zinc.py` (all 20 chunks) or `--mb 20 --chunks 1,2,3` for a deeper
+  slice of each (about 2.7 million molecules per 20 MB). `ZINC_PREFIX_MB` sets the default depth.
+* **The sample is convenient, not statistically random across all of ZINC:** the files are ordered by identifier, so the
+  start of a file is a reproducible but not uniformly random slice.
+* **Seed:** the molecules are a sample picked by a pseudo-random draw; the seed is the number that starts the draw.
+  Same seed → same molecules; different seed → a different sample. It does not change how anything is scored.
 
-*Demonstrates:* real parsing and persistence; honest scoping of what
-"validated" means.
+## What is deliberately not claimed
 
-### Configure & Review
-Only parameters that actually change the run are exposed:
+Koffee binding affinity and unbinding kinetics are not integrated (placeholders). FlexX and HYDE need a valid BioSolveIT
+licence (the development one expires 21 October 2026). Docking scores are predictions: Vina in particular
+over-estimates for large molecules. FastGrow suggestions are unsynthesised ideas. The NVIDIA GPU is not used (only the
+ADMET model could, and it is already fast on the CPU).
 
-| Control | Effect |
-|---|---|
-| Demo candidate library (10 / 25 / 40) | slices the demo library |
-| Max SA score | the real RDKit gate threshold |
-| ADMET / Affinity / Kinetics toggles | stage is skipped and shown as skipped |
-| "Favorable only" ADMET gate | tightens the mocked ADMET filter |
-| Shortlist size | how many survive the mocked affinity stage |
+## Five-minute walkthrough
 
-The right-hand panel is a pre-flight review of target, pipeline, configuration
-and environment (real vs demo engines). **Start Discovery** calls
-`POST /api/jobs`, which returns a job ID immediately and starts the pipeline
-as a background task, then redirects to the run screen.
-*Demonstrates:* configuration is persisted with the job; the API returns
-before the work finishes.
-
-### Discovery Run
-The original results workspace, now bound to one job (`?job=<id>`):
-
-- target header from the stored Target record
-- seven-stage funnel with live status, per-stage counts and in → out detail
-- candidate table (ranked by mocked residence time — a presentation rule)
-- candidate inspector with 2D depiction, properties and provenance trace
-- per-candidate and whole-run SDF export
-
-It polls `GET /api/jobs/{id}` once a second until the job is COMPLETE or
-FAILED. Stage transitions are committed as they happen, so you can watch the
-funnel fill in.
-
-### Candidate inspection & SDF export
-Selecting a row shows its real SA score and molecular weight (RDKit) alongside
-clearly badged mocked values. The provenance trace lists each stage with a
-real/mocked dot. "Export Candidate (.SDF)" and "Export All (.SDF)" return
-genuine RDKit-generated SDF; property tags for mocked values end in `_mocked`
-and each record carries a `PROVENANCE` statement.
-
-## 4. What each screen shows technically
-
-| Screen | Engineering point |
-|---|---|
-| New Discovery | input abstraction; one validated intake path |
-| Target Validation | real parsing, persistence, artifact storage |
-| Configure & Review | configuration as persisted job state; honest environment disclosure |
-| Discovery Run | async orchestration, state machine, molecule lineage, provenance |
-| SDF export | real RDKit I/O; provenance surviving outside the app |
-
-## 5. Demo script (≈ 6 minutes)
-
-Start the app — `docker compose up -d` (see `docs/DEPLOYMENT.md`), or for local
-development `uvicorn backend.main:app --port 8008` — and open `http://127.0.0.1:8008`.
-
-1. **Open Discoveries.** Point out the honest framing box: what is real, what
-   is a demo adapter.
-2. **Click New Discovery.** Note the pipeline preview on the right — badges
-   come from the backend, not the HTML.
-3. **Click Load Demo Target.** (Optionally first show Upload and a bad file —
-   e.g. an empty `.pdb` — to show the failing gate being named.)
-4. **Review validation.** Rotate the 3D structure. Point at the metadata and
-   the five checks: "these are read from the file." Read the scope notice.
-5. **Continue to Configuration.** Change the SA threshold or library size so
-   the review panel updates. Point at the engine table: one real, four demo.
-6. **Click Start Discovery.** A job ID exists immediately.
-7. **Watch the run screen.** The funnel fills stage by stage
-   (25 → 20 → 13 → 8 for the default settings). Hover a stage for its in → out
-   detail.
-8. **Select a candidate.** Show real SA score vs mocked Kd / koff, and the
-   provenance trace.
-9. **Download the SDF.** Open it; show the `_mocked` suffixes and the
-   `PROVENANCE` tag.
-10. *(Optional)* **Re-run This Configuration** — identical results, showing
-    determinism. Upload a different structure to show results change.
-
-## 6. What NOT to claim
-
-| Do **not** say | Say instead |
-|---|---|
-| "We screened 10 trillion molecules." | "The production architecture is meant to integrate ultra-large chemical-space screening. This MVP uses a deterministic demo library of 40 compounds, and the 10T+ figure is only a conceptual scale label." |
-| "This is a validated drug candidate." | "This is a computationally generated candidate that would need downstream scientific and experimental validation." |
-| "The binding affinity / koff predictions are…" | "Those values are deterministic placeholders from demo adapters. The architecture is built so a real engine replaces one adapter." |
-| "ADMET evaluates 220 properties." | "The partner stage is described as covering 220+ properties; the demo adapter returns four illustrative values." |
-| "The pipeline docked these compounds into KRAS." | "The compounds come from a fixed library and are not selected for the target. The structure is carried through the pipeline as an input artifact and seeds the demo values." |
-| "We validated the target's druggability." | "Validation here is structural: the file is readable and has atoms, chains and residues." |
-| "It runs on a GPU cluster." | "It runs as a background task in one local process. CPU/GPU separation is a documented production direction, not implemented." |
-| "Koffee is…" | The original brief's "Koffee" naming is unexplained; use "binding affinity" and "unbinding kinetics". |
-
-Also avoid: FEP and patent testing (out of scope), any claim that mocked values
-are experimental, and any statement that results are clinically meaningful.
+1. **New Discovery** → *Use demo target* (KRAS G12D, PDB 7RPZ) → **Validation** shows what the file was checked for.
+2. **Set up the search**: pocket = the pre-selected ligand; pick *AutoDock Vina*, 20 molecules from ZINC; leave filters on;
+   optionally switch on *Suggest new analogues*. Press **Start campaign**.
+3. Watch **Progress by step**: each step shows tool, counts in → out and batches filling in live.
+4. Open **Results**: ranked candidates with structures and separate scores; click a row for the 3D pose in the pocket,
+   the HYDE breakdown, ADMET groups and how the molecule got there. Check *Removed by a rule* for reasons.
+5. Download the **SDF/CSV**. Optional: stop the server during a run and restart it to see it resume.
