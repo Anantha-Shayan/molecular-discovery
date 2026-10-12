@@ -4,12 +4,8 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Configure Discovery — Molecular Discovery Platform</title>
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="assets/tokens.js"></script>
+<link href="assets/tailwind.css" rel="stylesheet"/>
+<link href="assets/fonts.css" rel="stylesheet"/>
 <link href="assets/app.css" rel="stylesheet"/>
 </head>
 <body class="bg-background font-body-default text-on-surface antialiased">
@@ -20,357 +16,232 @@
 <div class="lg:pl-64">
 <main class="relative pt-[92px] w-full min-h-screen">
 
-  <!-- Step bar -->
   <div class="w-full bg-surface-container-low px-space-lg py-space-sm flex flex-wrap items-center justify-between gap-space-sm">
     <div class="flex items-center gap-space-sm">
-      <span class="font-mono-data text-mono-data text-outline">RUN STAGING</span>
+      <span class="font-mono-data text-mono-data text-outline">NEW CAMPAIGN</span>
       <span class="text-outline-variant font-mono-data">/</span>
       <span id="staging-target" class="font-mono-data text-mono-data text-on-surface-variant">—</span>
       <span class="text-outline-variant font-mono-data">/</span>
       <span class="font-headline-sm text-headline-sm text-primary flex items-center gap-space-xs">
         <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-        Step 3: Configure &amp; Review Before Start
+        Step 3: Set up the search
       </span>
     </div>
-    <div class="flex items-center gap-space-md font-mono-sm text-mono-sm">
-      <div class="flex items-center gap-space-xs px-space-sm py-space-2xs bg-secondary-container/30 text-secondary rounded">
-        <span class="material-symbols-outlined text-[14px]">check_circle</span>
-        <span class="font-medium">Target ready</span>
-      </div>
+    <div class="flex items-center gap-space-xs px-space-sm py-space-2xs bg-secondary-container/30 text-secondary rounded font-mono-sm text-mono-sm">
+      <span class="material-symbols-outlined text-[14px]">check_circle</span><span class="font-medium">Protein ready</span>
     </div>
   </div>
 
   <div id="load-error" hidden class="px-space-lg py-space-lg max-w-[1720px] mx-auto"></div>
 
   <div id="content" hidden>
-    <!-- Header + target context -->
     <div class="px-space-lg py-space-md bg-surface-container-lowest">
-      <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
-        <div>
-          <div class="flex items-center gap-space-xs text-outline font-label-caps text-label-caps uppercase tracking-wider mb-space-2xs">
-            <span>Run Specification</span>
-          </div>
-          <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Configure Discovery</h1>
-          <p class="font-body-default text-body-default text-on-surface-variant mt-space-2xs max-w-3xl">
-            Define the pipeline parameters for this run. Everything set here is
-            persisted with the job, so the run's configuration stays auditable.
-          </p>
-        </div>
-      </div>
-
-      <div class="mt-space-md grid grid-cols-1 md:grid-cols-4 gap-space-sm p-space-sm bg-surface-container-low rounded">
-        <div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
-          <span class="material-symbols-outlined text-primary text-[20px]">target</span>
-          <div class="min-w-0">
-            <div class="font-label-caps text-label-caps text-outline uppercase">Active Target</div>
-            <div id="ctx-target" class="font-mono-data text-mono-data text-on-surface font-semibold truncate">—</div>
-          </div>
-        </div>
-        <div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
-          <span class="material-symbols-outlined text-secondary text-[20px]">verified</span>
-          <div class="min-w-0">
-            <div class="font-label-caps text-label-caps text-outline uppercase">Input Validation</div>
-            <div id="ctx-validation" class="font-mono-data text-mono-data text-secondary font-semibold truncate">—</div>
-          </div>
-        </div>
-        <div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
-          <span class="material-symbols-outlined text-tertiary text-[20px]">science</span>
-          <div class="min-w-0">
-            <div class="font-label-caps text-label-caps text-outline uppercase">Structure</div>
-            <div id="ctx-structure" class="font-mono-data text-mono-data text-on-surface font-semibold truncate">—</div>
-          </div>
-        </div>
-        <div class="flex items-center gap-space-sm px-space-sm py-space-xs bg-surface-container-lowest rounded">
-          <span class="material-symbols-outlined text-outline text-[20px]">memory</span>
-          <div class="min-w-0">
-            <div class="font-label-caps text-label-caps text-outline uppercase">Execution</div>
-            <div class="font-mono-data text-mono-data text-on-surface font-semibold truncate">Local · in-process</div>
-          </div>
-        </div>
-      </div>
+      <h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Set up the search</h1>
+      <p class="font-body-default text-body-default text-on-surface-variant mt-space-2xs max-w-3xl">
+        Tell the platform where on the protein to look, which docking program to use, and which molecules to test.
+        Everything you choose is saved with the campaign so the result can be audited later.
+      </p>
     </div>
 
     <div class="p-space-lg grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
+      <div class="xl:col-span-8 space-y-space-lg">
 
-      <!-- LEFT: stage configuration -->
-      <div class="xl:col-span-7 space-y-space-lg">
-        <div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
-          <div class="flex items-center justify-between pb-space-sm">
-            <div>
-              <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Sequential Protocol</span>
-              <h2 class="font-headline-md text-headline-md text-on-surface">Pipeline Stages</h2>
-            </div>
-            <span class="font-mono-sm text-mono-sm px-space-sm py-space-2xs bg-surface-container text-on-surface-variant rounded">6 stages</span>
-          </div>
-
-          <div class="space-y-space-sm mt-space-sm">
-
-            <!-- 01 screening -->
-            <div class="p-space-sm bg-surface-container-low rounded">
-              <div class="flex items-start justify-between gap-space-md">
-                <div class="flex items-start gap-space-sm">
-                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">01</span>
-                  <div>
-                    <div class="flex items-center gap-space-xs flex-wrap">
-                      <span class="font-headline-sm text-headline-sm text-on-surface">Chemical Space Screening</span>
-                      <span class="font-mono-sm text-mono-sm text-on-surface-variant px-space-xs py-space-2xs bg-surface-container rounded">demo adapter</span>
-                    </div>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
-                      Returns a fixed demo library. No screening is performed, and
-                      the compounds are not selected for this target.
-                    </p>
-                  </div>
-                </div>
-                <span class="font-mono-sm text-mono-sm text-outline shrink-0">required</span>
-              </div>
-              <div class="mt-space-sm pt-space-xs grid grid-cols-1 md:grid-cols-2 gap-space-sm">
-                <div>
-                  <label class="block font-mono-sm text-mono-sm text-outline mb-space-2xs" for="cfg-library">DEMO CANDIDATE LIBRARY</label>
-                  <select id="cfg-library"
-                          class="w-full h-8 px-space-sm bg-surface-container-lowest font-mono-data text-mono-data text-on-surface rounded focus:outline-none">
-                    <option value="10">10 candidates</option>
-                    <option value="25" selected>25 candidates</option>
-                    <option value="40">40 candidates (full demo library)</option>
-                  </select>
-                </div>
-                <div class="flex items-end">
-                  <p class="font-mono-sm text-mono-sm text-outline">
-                    Conceptual chemical space: 10T+. This run screens the demo
-                    library only.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <!-- 02 SA -->
-            <div class="p-space-sm bg-surface-container-low rounded">
-              <div class="flex items-start justify-between gap-space-md">
-                <div class="flex items-start gap-space-sm">
-                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">02</span>
-                  <div>
-                    <div class="flex items-center gap-space-xs flex-wrap">
-                      <span class="font-headline-sm text-headline-sm text-on-surface">Synthetic Accessibility</span>
-                      <span class="font-mono-sm text-mono-sm text-secondary bg-secondary-container/40 px-space-xs py-space-2xs rounded font-semibold">real — RDKit</span>
-                    </div>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
-                      Ertl &amp; Schuffenhauer SAscore computed by RDKit for every
-                      candidate. Scale 1.0 (easy) to 10.0 (hard).
-                    </p>
-                  </div>
-                </div>
-                <span class="font-mono-sm text-mono-sm text-outline shrink-0">required</span>
-              </div>
-              <div class="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-lowest p-space-sm rounded">
-                <div class="flex items-center gap-space-sm">
-                  <span class="material-symbols-outlined text-outline text-[18px]">tune</span>
-                  <label class="font-body-sm text-body-sm text-on-surface font-medium" for="cfg-sa">Maximum SA score to pass:</label>
-                </div>
-                <div class="flex items-center gap-space-xs">
-                  <input id="cfg-sa" type="number" min="1.0" max="10.0" step="0.1" value="5.0"
-                         class="w-20 h-7 text-center bg-surface-container-low font-mono-data text-mono-data text-on-surface rounded focus:outline-none font-semibold"/>
-                  <span class="font-mono-sm text-mono-sm text-outline">/ 10.0</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 03 ADMET -->
-            <div class="p-space-sm bg-surface-container-low rounded">
-              <div class="flex items-start justify-between gap-space-md">
-                <div class="flex items-start gap-space-sm">
-                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">03</span>
-                  <div>
-                    <div class="flex items-center gap-space-xs flex-wrap">
-                      <span class="font-headline-sm text-headline-sm text-on-surface">ADMET Prediction</span>
-                      <span class="font-mono-sm text-mono-sm text-on-surface-variant px-space-xs py-space-2xs bg-surface-container rounded">demo adapter</span>
-                    </div>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
-                      Produces a profile label and four illustrative values. Not a
-                      real ADMET model.
-                    </p>
-                  </div>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input id="cfg-admet" checked class="sr-only peer" type="checkbox"/>
-                  <div class="w-9 h-5 bg-surface-container-high rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              <div class="mt-space-sm pt-space-xs flex items-center justify-between bg-surface-container-lowest p-space-sm rounded gap-space-sm">
-                <label class="flex items-center gap-space-xs cursor-pointer select-none">
-                  <input id="cfg-strict-admet" checked class="w-4 h-4 rounded bg-surface-container-low" type="checkbox"/>
-                  <span class="font-body-sm text-body-sm text-on-surface">Keep only "Favorable" candidates (uncheck to also keep "Moderate")</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- 04 affinity -->
-            <div class="p-space-sm bg-surface-container-low rounded">
-              <div class="flex items-start justify-between gap-space-md">
-                <div class="flex items-start gap-space-sm">
-                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">04</span>
-                  <div>
-                    <div class="flex items-center gap-space-xs flex-wrap">
-                      <span class="font-headline-sm text-headline-sm text-on-surface">Binding Affinity</span>
-                      <span class="font-mono-sm text-mono-sm text-on-surface-variant px-space-xs py-space-2xs bg-surface-container rounded">demo adapter</span>
-                    </div>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
-                      Produces placeholder K<sub>d</sub> and ΔG values. No docking or
-                      scoring function is run.
-                    </p>
-                  </div>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input id="cfg-affinity" checked class="sr-only peer" type="checkbox"/>
-                  <div class="w-9 h-5 bg-surface-container-high rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              <div class="mt-space-sm pt-space-xs flex flex-wrap items-center justify-between bg-surface-container-lowest p-space-sm rounded gap-space-sm">
-                <label class="font-body-sm text-body-sm text-on-surface" for="cfg-shortlist">
-                  Shortlist size (keeps the lowest mocked K<sub>d</sub>):
-                </label>
-                <input id="cfg-shortlist" type="number" min="1" max="40" step="1" value="8"
-                       class="w-20 h-7 text-center bg-surface-container-low font-mono-data text-mono-data text-on-surface rounded focus:outline-none font-semibold"/>
-              </div>
-            </div>
-
-            <!-- 05 kinetics -->
-            <div class="p-space-sm bg-surface-container-low rounded">
-              <div class="flex items-start justify-between gap-space-md">
-                <div class="flex items-start gap-space-sm">
-                  <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">05</span>
-                  <div>
-                    <div class="flex items-center gap-space-xs flex-wrap">
-                      <span class="font-headline-sm text-headline-sm text-on-surface">Unbinding Kinetics</span>
-                      <span class="font-mono-sm text-mono-sm text-on-surface-variant px-space-xs py-space-2xs bg-surface-container rounded">demo adapter</span>
-                    </div>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
-                      Produces placeholder k<sub>off</sub> and residence time. No
-                      molecular dynamics is run.
-                    </p>
-                  </div>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input id="cfg-kinetics" checked class="sr-only peer" type="checkbox"/>
-                  <div class="w-9 h-5 bg-surface-container-high rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-            </div>
-
-            <!-- 06 shortlist -->
-            <div class="p-space-sm bg-surface-container rounded">
-              <div class="flex items-start justify-between gap-space-md">
-                <div class="flex items-start gap-space-sm">
-                  <span class="font-mono-data text-mono-data text-secondary font-semibold px-space-xs py-space-2xs bg-surface-container-lowest rounded">06</span>
-                  <div>
-                    <div class="flex items-center gap-space-xs flex-wrap">
-                      <span class="font-headline-sm text-headline-sm text-on-surface">Candidate Shortlist</span>
-                      <span class="font-mono-sm text-mono-sm text-secondary bg-surface-container-lowest px-space-xs py-space-2xs rounded">terminal output</span>
-                    </div>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
-                      Surviving candidates with full stage provenance and SDF export.
-                      Status buckets are presentation labels, not scientific conclusions.
-                    </p>
-                  </div>
-                </div>
-                <span class="font-mono-sm text-mono-sm text-outline px-space-xs py-space-2xs bg-surface-container-lowest rounded shrink-0">automatic</span>
-              </div>
+        <!-- 1 Binding site -->
+        <section class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+          <div class="flex items-start gap-space-sm">
+            <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-low rounded">1</span>
+            <div class="flex-1">
+              <h2 class="font-headline-md text-headline-md text-on-surface">Binding site</h2>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                The binding site is the pocket on the protein where a drug would sit. The most reliable way to
+                define it is to reuse the pocket of a molecule that was already captured in the experimental structure.
+              </p>
             </div>
           </div>
-
-          <div class="mt-space-md p-space-sm bg-surface-container-low rounded flex items-start gap-space-sm">
-            <span class="material-symbols-outlined text-outline text-[18px]">dns</span>
+          <div id="chain-row" hidden class="mt-space-md flex items-center gap-space-sm">
+            <label class="font-mono-sm text-mono-sm text-outline" for="cfg-chain">PROTEIN CHAIN</label>
+            <select id="cfg-chain" class="h-8 px-space-sm bg-surface-container-low font-mono-data text-mono-data rounded"></select>
+          </div>
+          <div id="site-options" class="mt-space-md grid grid-cols-1 md:grid-cols-2 gap-space-sm"></div>
+          <div id="manual-box" hidden class="mt-space-md p-space-sm bg-surface-container-low rounded space-y-space-sm">
             <p class="font-body-sm text-body-sm text-on-surface-variant">
-              <strong class="text-on-surface font-medium">Execution:</strong>
-              stages run sequentially in the API process as a background task,
-              writing artifacts to <code class="font-mono-sm">data/runs/{job_id}/</code>.
-              No queue, cluster or GPU pool is involved in this MVP.
+              Enter the centre and edge lengths of a search box in ångström (Å), in the same coordinate frame as the structure file.
+              Manual boxes work with AutoDock Vina only, because HYDE and FlexX need a reference molecule to find the pocket.
             </p>
+            <div class="grid grid-cols-3 gap-space-sm font-mono-data text-mono-data">
+              <label>Centre X<input id="bx" type="number" step="0.1" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
+              <label>Centre Y<input id="by" type="number" step="0.1" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
+              <label>Centre Z<input id="bz" type="number" step="0.1" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
+              <label>Size X<input id="sx" type="number" step="0.5" value="24" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
+              <label>Size Y<input id="sy" type="number" step="0.5" value="24" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
+              <label>Size Z<input id="sz" type="number" step="0.5" value="24" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
+            </div>
+            <div class="flex items-center gap-space-sm">
+              <button id="box-check" type="button" class="h-8 px-space-md bg-primary text-on-primary rounded font-body-sm">Check box</button>
+              <span id="box-msg" class="font-mono-sm text-mono-sm text-outline"></span>
+            </div>
           </div>
-        </div>
+          <div id="no-sites" hidden class="mt-space-md p-space-sm bg-warning-container text-warning rounded font-body-sm text-body-sm">
+            No ligand was found in this structure, so the site must be a manual box (Vina only, no HYDE re-scoring).
+          </div>
+        </section>
 
-        <!-- Engine environment: rendered from /api/engines -->
-        <div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
-          <div class="flex items-center justify-between pb-space-sm">
+        <!-- 2 Engine -->
+        <section class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+          <div class="flex items-start gap-space-sm">
+            <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-low rounded">2</span>
             <div>
-              <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Runtime Transparency</span>
-              <h3 class="font-headline-sm text-headline-sm text-on-surface">Scientific Engine Environment</h3>
+              <h2 class="font-headline-md text-headline-md text-on-surface">Docking program</h2>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                Docking tries many ways of fitting each molecule into the pocket and scores the best fit.
+                The two programs use different scoring scales, so their numbers cannot be compared with each other.
+              </p>
             </div>
-            <span class="font-mono-sm text-mono-sm px-space-sm py-space-2xs bg-surface-container-high text-on-surface font-medium rounded">Hybrid</span>
           </div>
-          <div class="mt-space-sm overflow-hidden rounded bg-surface-container-low">
-            <div class="grid grid-cols-2 px-space-sm py-space-xs bg-surface-container font-label-caps text-label-caps text-outline uppercase">
-              <span>Stage engine</span>
-              <span class="text-right">Execution backend</span>
+          <div id="engine-options" class="mt-space-md grid grid-cols-1 md:grid-cols-2 gap-space-sm"></div>
+        </section>
+
+        <!-- 3 Library -->
+        <section class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+          <div class="flex items-start gap-space-sm">
+            <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-low rounded">3</span>
+            <div>
+              <h2 class="font-headline-md text-headline-md text-on-surface">Molecules to test</h2>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                Molecules are fetched automatically from ZINC, a public catalogue of purchasable compounds.
+                These are existing catalogue molecules, not newly invented ones.
+              </p>
             </div>
-            <div id="engine-rows" class="divide-y divide-surface-container-high/40 font-mono-data text-mono-data"></div>
           </div>
-          <div class="mt-space-sm p-space-sm bg-surface-container-low rounded text-on-surface-variant font-mono-sm text-mono-sm flex items-start gap-space-xs">
-            <span class="material-symbols-outlined text-outline text-[16px] mt-0.5">info</span>
-            <span>
-              Values produced by demo adapters are deterministic placeholders. They
-              are not experimental measurements or model predictions, and are
-              labelled "mocked" wherever they appear, including in exported SDF tags.
-            </span>
+          <div class="mt-space-md grid grid-cols-1 md:grid-cols-3 gap-space-sm font-mono-data text-mono-data">
+            <label>Where the molecules come from
+              <select id="cfg-source" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded">
+                <option value="zinc20">ZINC20 catalogue (public database)</option>
+                <option value="demo">Built-in known drugs (offline)</option>
+                <option value="upload">My own list (SMILES)</option>
+              </select></label>
+            <label>How many molecules
+              <input id="cfg-count" type="number" min="1" max="2000" value="30" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+            <label>Sampling seed
+              <input id="cfg-seed" type="number" value="42" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
           </div>
-        </div>
+          <div class="mt-space-sm grid grid-cols-1 md:grid-cols-2 gap-space-sm font-body-sm text-body-sm text-on-surface-variant">
+            <div id="source-help" class="p-space-sm bg-surface-container-low rounded"></div>
+            <div class="p-space-sm bg-surface-container-low rounded"><strong class="text-on-surface">Sampling seed:</strong>
+              the molecules are a <em>sample</em>, picked by a pseudo-random draw. The seed is the number that starts that draw:
+              the same seed always gives the same molecules, so a result can be reproduced and audited; a different seed gives a
+              different sample. (It does not change how docking is scored.)</div>
+          </div>
+          <div id="upload-row" hidden class="mt-space-sm">
+            <label class="font-mono-sm text-mono-sm text-outline" for="cfg-upload">ONE MOLECULE PER LINE: SMILES [NAME]</label>
+            <textarea id="cfg-upload" rows="5" class="mt-space-2xs w-full p-space-sm bg-surface-container-low font-mono-data text-mono-data rounded" placeholder="CC(=O)Oc1ccccc1C(=O)O aspirin"></textarea>
+          </div>
+          <p id="lib-note" class="mt-space-sm font-mono-sm text-mono-sm text-outline"></p>
+          <p id="lib-cache" class="mt-space-2xs font-mono-sm text-mono-sm text-outline"></p>
+        </section>
+
+        <!-- 4 Effort & filters -->
+        <section class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+          <div class="flex items-start gap-space-sm">
+            <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-low rounded">4</span>
+            <div>
+              <h2 class="font-headline-md text-headline-md text-on-surface">Screening steps and filters</h2>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">
+                Each step removes molecules for a stated reason. Scores are never blended into one number.
+              </p>
+            </div>
+          </div>
+          <div class="mt-space-md space-y-space-sm">
+            <div class="p-space-sm bg-surface-container-low rounded space-y-space-sm">
+              <div>
+                <div class="font-headline-sm text-headline-sm">Docking settings <span id="dock-engine-chip" class="font-mono-sm text-mono-sm bg-surface-container-high px-space-xs rounded"></span></div>
+                <p id="dock-help" class="font-body-sm text-body-sm text-on-surface-variant"></p>
+              </div>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-space-sm font-mono-data text-mono-data">
+                <label id="w-effort">Search effort
+                  <select id="cfg-effort" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded">
+                    <option value="4">Quick</option><option value="8" selected>Standard</option><option value="16">Thorough</option><option value="custom">Custom…</option>
+                  </select></label>
+                <label id="w-exh" hidden>Exhaustiveness (1–64)
+                  <input id="cfg-exh" type="number" min="1" max="64" value="8" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
+                <label id="w-clash" hidden>Clash tolerance
+                  <select id="cfg-clash" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded">
+                    <option value="0" selected>Standard</option><option value="1">Medium</option><option value="2">High</option>
+                  </select></label>
+                <label>Poses kept per molecule
+                  <input id="cfg-modes" type="number" min="1" max="10" value="5" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
+                <label>Keep best
+                  <select id="cfg-keep" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded">
+                    <option value="0.25">25% by docking score</option><option value="0.5" selected>50% by docking score</option>
+                    <option value="0.75">75% by docking score</option><option value="1">All (no cut)</option>
+                  </select></label>
+              </div>
+            </div>
+            <div class="p-space-sm bg-surface-container-low rounded flex items-start justify-between gap-space-md">
+              <div>
+                <div class="font-headline-sm text-headline-sm flex items-center gap-space-xs">HYDE re-scoring <span class="font-mono-sm text-mono-sm bg-secondary-container/60 text-on-secondary-container px-space-xs rounded">BioSolveIT</span></div>
+                <p id="hyde-note" class="font-body-sm text-body-sm text-on-surface-variant">A second, physics-based opinion on each pose that accounts for the energy cost of removing water. It improves the ranking.</p>
+              </div>
+              <label class="flex items-center gap-space-xs shrink-0"><input id="cfg-hyde" type="checkbox" checked class="w-4 h-4"><span class="font-mono-sm text-mono-sm">on</span></label>
+            </div>
+            <div class="p-space-sm bg-surface-container-low rounded flex flex-wrap items-center justify-between gap-space-sm">
+              <div>
+                <div class="font-headline-sm text-headline-sm">Synthetic accessibility</div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">Scale 1 (easy to make) to 10 (very hard). Molecules above the limit are removed.</p>
+              </div>
+              <label class="font-mono-data text-mono-data">Limit <input id="cfg-sa" type="number" min="1" max="10" step="0.1" value="5" class="w-20 h-8 text-center bg-surface-container-lowest rounded"></label>
+            </div>
+            <div class="p-space-sm bg-surface-container-low rounded flex items-start justify-between gap-space-md">
+              <div>
+                <div class="font-headline-sm text-headline-sm">ADMET safety screen <span class="font-mono-sm text-mono-sm bg-secondary-container/60 text-on-secondary-container px-space-xs rounded">ADMET-AI model</span></div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">Predicts how the body may absorb, process and tolerate each molecule.
+                  A molecule gets an alert when its predicted risk (mutagenicity, heart-channel block, liver injury, clinical toxicity or carcinogenicity)
+                  is both likely and higher than 90% of approved drugs.</p>
+                <label class="mt-space-xs flex items-center gap-space-xs font-body-sm text-body-sm"><input id="cfg-strict" type="checkbox" checked class="w-4 h-4"> Remove any molecule with an alert (untick to allow one)</label>
+              </div>
+              <label class="flex items-center gap-space-xs shrink-0"><input id="cfg-admet" type="checkbox" checked class="w-4 h-4"><span class="font-mono-sm text-mono-sm">on</span></label>
+            </div>
+            <div class="p-space-sm bg-surface-container-low rounded flex flex-wrap items-center justify-between gap-space-sm">
+              <div>
+                <div class="font-headline-sm text-headline-sm">Rank the survivors by</div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">Only this one measure orders the list. The others are shown beside it.</p>
+              </div>
+              <select id="cfg-rank" class="h-8 px-space-sm bg-surface-container-lowest font-mono-data text-mono-data rounded">
+                <option value="hyde">HYDE score</option><option value="docking">Docking score</option><option value="sa">Synthetic accessibility</option>
+              </select>
+            </div>
+            <div class="p-space-sm bg-surface-container-low rounded flex items-start justify-between gap-space-md">
+              <div>
+                <div class="font-headline-sm text-headline-sm flex items-center gap-space-xs">Suggest new analogues <span class="font-mono-sm text-mono-sm bg-secondary-container/60 text-on-secondary-container px-space-xs rounded">FastGrow</span></div>
+                <p id="grow-note" class="font-body-sm text-body-sm text-on-surface-variant">After ranking, FastGrow grows small fragments from the best candidates into free space in the pocket and proposes new molecules.
+                  These are computer-generated suggestions, listed separately: they are not catalogue compounds, have not been made, and their score is not an affinity.</p>
+              </div>
+              <label class="flex items-center gap-space-xs shrink-0"><input id="cfg-grow" type="checkbox" class="w-4 h-4"><span class="font-mono-sm text-mono-sm">on</span></label>
+            </div>
+            <div class="p-space-sm bg-surface-container rounded border-l-2 border-outline-variant">
+              <div class="font-headline-sm text-headline-sm flex items-center gap-space-xs">Binding affinity and unbinding kinetics (Koffee)
+                <span class="font-mono-sm text-mono-sm bg-surface-container-high px-space-xs rounded">placeholder</span></div>
+              <p class="font-body-sm text-body-sm text-on-surface-variant">The Koffee tools are not connected yet. If left on, these steps add clearly marked placeholder values that never affect which molecules pass or how they are ranked.</p>
+              <label class="mt-space-xs flex items-center gap-space-xs font-body-sm text-body-sm"><input id="cfg-mock" type="checkbox" checked class="w-4 h-4"> Include placeholder columns</label>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <!-- RIGHT: review + launch -->
-      <div class="xl:col-span-5 space-y-space-lg">
-        <div class="bg-surface-container-lowest p-space-md rounded shadow-sm">
-          <div class="flex items-center justify-between pb-space-sm">
-            <div>
-              <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Pre-flight</span>
-              <h2 class="font-headline-md text-headline-md text-on-surface">Run Specification Review</h2>
-            </div>
-            <span class="font-mono-data text-mono-data text-primary font-semibold bg-primary/10 px-space-sm py-space-2xs rounded">STEP 3 / 3</span>
-          </div>
-
-          <div class="space-y-space-sm mt-space-sm font-mono-data text-mono-data">
-            <div class="p-space-sm bg-surface-container-low rounded">
-              <div class="font-label-caps text-label-caps text-outline uppercase mb-space-2xs">TARGET</div>
-              <div id="review-target" class="text-on-surface font-semibold text-headline-sm">—</div>
-              <div id="review-target-sub" class="text-outline text-mono-sm mt-space-2xs">—</div>
-            </div>
-
-            <div class="p-space-sm bg-surface-container-low rounded">
-              <div class="font-label-caps text-label-caps text-outline uppercase mb-space-2xs">PIPELINE &amp; CONFIGURATION</div>
-              <div id="review-flow" class="mt-space-xs space-y-space-xs font-mono-sm text-mono-sm"></div>
-            </div>
-
-            <div class="p-space-sm bg-surface-container-low rounded">
-              <div class="font-label-caps text-label-caps text-outline uppercase mb-space-2xs">ENVIRONMENT</div>
-              <div class="space-y-space-2xs font-mono-sm text-mono-sm text-on-surface-variant">
-                <div class="flex justify-between"><span class="text-outline">Real engines</span><span id="review-real">—</span></div>
-                <div class="flex justify-between"><span class="text-outline">Demo adapters</span><span id="review-mocked">—</span></div>
-                <div class="flex justify-between"><span class="text-outline">Execution</span><span>Local background task</span></div>
-                <div class="flex justify-between"><span class="text-outline">Artifacts</span><span>data/runs/{job_id}/</span></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-space-lg space-y-space-sm">
+      <!-- Review -->
+      <div class="xl:col-span-4 space-y-space-lg">
+        <div class="bg-surface-container-lowest p-space-md rounded shadow-sm xl:sticky xl:top-[108px]">
+          <span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Before you start</span>
+          <h2 class="font-headline-md text-headline-md text-on-surface">Review</h2>
+          <div id="review" class="mt-space-sm space-y-space-xs font-mono-sm text-mono-sm"></div>
+          <div id="estimate" class="mt-space-sm p-space-sm bg-surface-container-low rounded font-body-sm text-body-sm text-on-surface-variant"></div>
+          <div class="mt-space-md space-y-space-sm">
             <div id="start-error" hidden></div>
-            <button id="start-btn" type="button"
-                    class="w-full h-11 bg-primary hover:bg-primary-container text-on-primary font-headline-sm text-headline-sm rounded flex items-center justify-center gap-space-sm transition-all shadow-sm">
-              <span class="material-symbols-outlined text-[20px]">play_arrow</span>
-              <span id="start-label">Start Discovery</span>
+            <button id="start-btn" type="button" class="w-full h-11 bg-primary hover:bg-primary-container disabled:opacity-50 text-on-primary font-headline-sm text-headline-sm rounded flex items-center justify-center gap-space-xs">
+              <span class="material-symbols-outlined text-[20px]">play_arrow</span><span id="start-label">Start campaign</span>
             </button>
-            <p class="font-mono-sm text-mono-sm text-outline text-center">
-              Creates a job and begins executing the pipeline immediately.
-            </p>
-            <div class="grid grid-cols-2 gap-space-sm">
-              <a id="back-btn" href="#"
-                 class="h-9 px-space-sm bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm rounded flex items-center justify-center gap-space-xs transition-colors">
-                <span class="material-symbols-outlined text-[16px]">arrow_back</span>
-                <span>Back to Validation</span>
-              </a>
-              <button id="json-btn" type="button"
-                      class="h-9 px-space-sm bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm rounded flex items-center justify-center gap-space-xs transition-colors">
-                <span class="material-symbols-outlined text-[16px]">content_paste</span>
-                <span>Show Run JSON</span>
-              </button>
-            </div>
-            <pre id="json-preview" hidden class="p-space-sm bg-surface-container-low rounded font-mono-sm text-mono-sm text-on-surface-variant overflow-x-auto"></pre>
+            <a id="back-btn" href="#" class="h-9 bg-surface-container-low hover:bg-surface-container rounded flex items-center justify-center gap-space-xs font-body-sm text-body-sm">
+              <span class="material-symbols-outlined text-[16px]">arrow_back</span>Back to validation</a>
           </div>
         </div>
       </div>
@@ -383,157 +254,196 @@
 <script>
   const targetId = params.get("target");
   const chainParam = params.get("chain");
-  let target = null;
+  let target = null, sites = [], tools = null;
+  const state = { siteKey: null, manual: null, engine: "vina" };
 
-  function readConfig() {
+  // Rough speed measured on the development machine (8 CPU threads); shown only as an estimate.
+  const SECONDS_PER_MOLECULE = { 4: 6, 8: 11, 16: 22 };
+
+  function cfg() {
+    const site = state.siteKey === "manual"
+      ? { mode: "manual", center: state.manual.center, size: state.manual.size }
+      : { mode: "ligand", reference: state.siteKey, padding: 6 };
+    const mock = document.getElementById("cfg-mock").checked;
     return {
       target_id: targetId,
-      selected_chain: chainParam || (target && target.selected_chain) || null,
-      library_limit: Number(document.getElementById("cfg-library").value),
+      chain: document.getElementById("cfg-chain").value || chainParam || null,
+      engine: state.engine,
+      site,
+      library_source: document.getElementById("cfg-source").value,
+      library_count: Number(document.getElementById("cfg-count").value),
+      library_seed: Number(document.getElementById("cfg-seed").value),
+      library_upload: document.getElementById("cfg-source").value === "upload" ? document.getElementById("cfg-upload").value : null,
+      exhaustiveness: document.getElementById("cfg-effort").value === "custom"
+        ? Number(document.getElementById("cfg-exh").value) : Number(document.getElementById("cfg-effort").value),
+      num_modes: Number(document.getElementById("cfg-modes").value),
+      clash_tolerance: Number(document.getElementById("cfg-clash").value),
+      dock_keep_fraction: Number(document.getElementById("cfg-keep").value),
+      enable_hyde: document.getElementById("cfg-hyde").checked,
       sa_threshold: Number(document.getElementById("cfg-sa").value),
       enable_admet: document.getElementById("cfg-admet").checked,
-      enable_affinity: document.getElementById("cfg-affinity").checked,
-      enable_kinetics: document.getElementById("cfg-kinetics").checked,
-      strict_admet_gate: document.getElementById("cfg-strict-admet").checked,
-      affinity_shortlist: Number(document.getElementById("cfg-shortlist").value),
+      strict_admet_gate: document.getElementById("cfg-strict").checked,
+      enable_affinity: mock, enable_kinetics: mock,
+      rank_by: document.getElementById("cfg-rank").value,
+      enable_grow: document.getElementById("cfg-grow").checked,
     };
   }
 
-  function flowRow(label, value, muted) {
-    return `
-      <div class="flex items-center justify-between bg-surface-container-lowest p-space-xs rounded ${muted ? "opacity-50" : ""}">
-        <span class="text-on-surface font-medium">${label}</span>
-        <span class="text-outline text-right">${value}</span>
-      </div>`;
+  function card(id, checked, title, badge, text, disabled, group) {
+    return `<label class="p-space-sm rounded border ${checked ? "border-primary bg-primary/5" : "border-surface-container-high bg-surface-container-low"} ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-primary"} block">
+      <div class="flex items-start gap-space-sm">
+        <input type="radio" name="${group}" value="${esc(id)}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} class="mt-1">
+        <div><div class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-space-xs flex-wrap">${title}${badge || ""}</div>
+        <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs">${text}</p></div>
+      </div></label>`;
+  }
+  const chip = (text, kind) => `<span class="font-mono-sm text-mono-sm px-space-xs py-space-2xs rounded ${kind === "ok" ? "bg-secondary-container/60 text-on-secondary-container" : kind === "bad" ? "bg-error-container text-on-error-container" : "bg-surface-container-high text-on-surface-variant"}">${text}</span>`;
+
+  function renderSites() {
+    const html = sites.map((s) => card(s.key, state.siteKey === s.key,
+      `${esc(s.het_name)} <span class="font-mono-sm text-outline">chain ${esc(s.chain)} #${esc(s.resseq)}</span>`, chip(`${s.heavy_atoms} atoms`, ""),
+      `Pocket around the bound molecule. Search box ${s.box.size.join(" × ")} Å.`, false, "site")).join("");
+    document.getElementById("site-options").innerHTML = html +
+      card("manual", state.siteKey === "manual", "Draw my own box", chip("Vina only", ""), "Enter coordinates yourself.", false, "site");
+    document.getElementById("no-sites").hidden = sites.length > 0;
+    document.getElementById("manual-box").hidden = state.siteKey !== "manual";
+    document.querySelectorAll('input[name="site"]').forEach((el) => el.addEventListener("change", () => {
+      state.siteKey = el.value; if (state.siteKey !== "manual") state.manual = null; sync();
+    }));
   }
 
-  const ARROW = '<div class="flex justify-center text-outline"><span class="material-symbols-outlined text-[14px]">arrow_downward</span></div>';
+  function renderEngines() {
+    const v = tools.tools.vina, f = tools.tools.flexx;
+    document.getElementById("engine-options").innerHTML =
+      card("vina", state.engine === "vina", "AutoDock Vina", chip(v.available ? `ready · v${esc(v.version)}` : "not installed", v.available ? "ok" : "bad"),
+        "Open-source docking program. Score in kcal/mol (more negative = better predicted fit).", !v.available, "engine") +
+      card("flexx", state.engine === "flexx", "BioSolveIT FlexX", chip(f.available ? `ready · v${esc(f.version)}` : "not installed", f.available ? "ok" : "bad"),
+        f.available ? "Very fast commercial docking. Needs a pocket defined by a bound molecule."
+          : esc(f.reason || "Not installed on this server."), !f.available, "engine");
+    document.querySelectorAll('input[name="engine"]').forEach((el) => el.addEventListener("change", () => { state.engine = el.value; sync(); }));
+  }
+
+  function sync() {
+    const manual = state.siteKey === "manual";
+    const hyde = document.getElementById("cfg-hyde");
+    const hydeOk = tools.tools.hydescorer.available && !manual;
+    hyde.disabled = !hydeOk;
+    if (!hydeOk) hyde.checked = false;
+    document.getElementById("hyde-note").textContent = !tools.tools.hydescorer.available
+      ? "HYDE is not installed on this server." : manual ? "HYDE needs a pocket defined by a bound molecule, so it is off for a manual box."
+      : "A second, physics-based opinion on each pose that accounts for the energy cost of removing water. It improves the ranking.";
+    const rank = document.getElementById("cfg-rank");
+    rank.querySelector('option[value="hyde"]').disabled = !hyde.checked;
+    if (!hyde.checked && rank.value === "hyde") rank.value = "docking";
+    document.getElementById("upload-row").hidden = document.getElementById("cfg-source").value !== "upload";
+    document.getElementById("lib-note").textContent = {
+      zinc20: "Streams a reproducible sample of the ZINC20 catalogue; the same seed gives the same molecules. Needs internet access.",
+      demo: "A short built-in list of well-known drugs; works offline.",
+      upload: "Molecules that fail cleaning are listed with the reason.",
+    }[document.getElementById("cfg-source").value];
+    const vina = state.engine === "vina";
+    document.getElementById("w-effort").hidden = !vina;
+    document.getElementById("w-exh").hidden = !vina || document.getElementById("cfg-effort").value !== "custom";
+    document.getElementById("w-clash").hidden = vina;
+    document.getElementById("dock-engine-chip").textContent = vina ? "AutoDock Vina" : "BioSolveIT FlexX";
+    document.getElementById("dock-help").textContent = vina
+      ? "Search effort is how many random starting positions Vina tries per molecule: higher finds better poses but takes longer. Poses kept is how many alternative placements are saved for each molecule."
+      : "FlexX builds each molecule piece by piece inside the pocket. Clash tolerance sets how much overlap with the protein is accepted (Standard is strictest). Poses kept is how many alternative placements FlexX returns per molecule; HYDE re-scores all of them.";
+    const src = document.getElementById("cfg-source").value;
+    document.getElementById("source-help").innerHTML = {
+      zinc20: "<strong class=\"text-on-surface\">ZINC20:</strong> a public catalogue of purchasable compounds from the University of California. Real, commercially available molecules, so a hit can be ordered and tested. Sampled at the start of each run from a cached download (details below).",
+      demo: "<strong class=\"text-on-surface\">Built-in drugs:</strong> about 40 well-known approved drugs and reference scaffolds shipped with the app. Works offline and is a good sanity check, but most are far too large or too different from fragments of a new drug.",
+      upload: "<strong class=\"text-on-surface\">Your list:</strong> paste your own molecules (SMILES, one per line, optional name). Use it for an in-house or vendor library. Every line is cleaned and checked; rejected ones are listed with the reason."
+    }[src];
+    const fgOk = tools.tools.fastgrow.available && tools.tools.fastgrow_db_creator.available;
+    const grow = document.getElementById("cfg-grow");
+    grow.disabled = !fgOk;
+    if (!fgOk) { grow.checked = false; document.getElementById("grow-note").textContent = "FastGrow is not installed on this server."; }
+    renderSites(); renderEngines(); renderReview();
+  }
 
   function renderReview() {
-    const cfg = readConfig();
-    const rows = [
-      flowRow("1. Chemical Space", `${cfg.library_limit} demo candidates`, false),
-      flowRow("2. SA Filter", `RDKit SA ≤ ${cfg.sa_threshold.toFixed(1)}`, false),
-      flowRow("3. ADMET", cfg.enable_admet
-        ? (cfg.strict_admet_gate ? "Favorable only" : "Favorable + Moderate")
-        : "disabled", !cfg.enable_admet),
-      flowRow("4. Binding Affinity", cfg.enable_affinity
-        ? `top ${cfg.affinity_shortlist} by mocked Kd` : "disabled", !cfg.enable_affinity),
-      flowRow("5. Unbinding Kinetics", cfg.enable_kinetics
-        ? "koff & residence time" : "disabled", !cfg.enable_kinetics),
-      `<div class="flex items-center justify-between bg-surface-container p-space-xs rounded font-semibold text-primary">
-         <span>6. Candidate Shortlist</span><span>ranked output</span></div>`,
-    ];
-    document.getElementById("review-flow").innerHTML = rows.join(ARROW);
-    document.getElementById("json-preview").textContent = JSON.stringify(cfg, null, 2);
+    const c = cfg(); const rows = [];
+    const row = (a, b) => `<div class="flex justify-between gap-space-sm bg-surface-container-low p-space-xs rounded"><span class="text-outline">${a}</span><span class="text-on-surface text-right">${b}</span></div>`;
+    rows.push(row("Pocket", c.site.mode === "ligand" ? esc(c.site.reference) : "manual box"));
+    rows.push(row("Docking", c.engine === "vina" ? "AutoDock Vina" : "BioSolveIT FlexX"));
+    rows.push(row("Molecules", `${c.library_count} · ${c.library_source}`));
+    rows.push(row("Docking cut", c.dock_keep_fraction === 1 ? "none" : `best ${Math.round(c.dock_keep_fraction * 100)}%`));
+    rows.push(row("HYDE", c.enable_hyde ? "on" : "off"));
+    rows.push(row("SA limit", `≤ ${c.sa_threshold}`));
+    rows.push(row("ADMET", c.enable_admet ? (c.strict_admet_gate ? "no alerts" : "≤ 1 alert") : "off"));
+    rows.push(row("New analogues", c.enable_grow ? "FastGrow, top 3" : "off"));
+    rows.push(row("Ranked by", { hyde: "HYDE score", docking: "docking score", sa: "SA score" }[c.rank_by]));
+    document.getElementById("review").innerHTML = rows.join("");
+    const per = c.engine === "vina" ? Math.max(3, c.exhaustiveness * 1.4) : 13;
+    const secs = per * c.library_count;
+    const t = secs < 90 ? `${Math.round(secs)} s` : `${Math.round(secs / 60)} min`;
+    document.getElementById("estimate").innerHTML = `<strong class="text-on-surface">Rough time for docking: about ${t}.</strong> Estimated from speed measured on the development computer; this server may differ. Progress on the next screen is real, not estimated.`;
   }
 
-  function renderTarget(t) {
-    const chain = chainParam || t.selected_chain;
-    const chainInfo = (t.chains || []).find((c) => c.chain_id === chain);
-    const label = `${t.name}${t.pdb_id ? ` (PDB ${t.pdb_id})` : ""}`;
-
-    document.getElementById("staging-target").textContent = t.pdb_id || t.name;
-    document.getElementById("ctx-target").textContent = `${t.name} · Chain ${chain || "—"}`;
-    document.getElementById("ctx-validation").textContent =
-      t.validation_status === "PASSED" ? "Passed input validation" : (t.validation_status || "—");
-    document.getElementById("ctx-structure").textContent = [
-      t.experiment_method || "method not stated",
-      fmt.resolution(t.resolution_a),
-    ].filter(Boolean).join(" · ");
-
-    document.getElementById("review-target").textContent = label;
-    document.getElementById("review-target-sub").textContent = [
-      chainInfo ? `Chain ${fmt.chainLabel(chainInfo)}` : null,
-      `${fmt.int(t.residue_count)} residues`,
-      `${fmt.int(t.atom_count)} atoms`,
-      t.is_demo ? "demo fixture" : null,
-    ].filter(Boolean).join(" · ");
-
-    document.getElementById("back-btn").href = `target-validation.html?target=${t.target_id}`;
-  }
-
-  function renderEngines(engines) {
-    document.getElementById("engine-rows").innerHTML = engines
-      .map((engine) => `
-        <div class="grid grid-cols-2 px-space-sm py-space-xs items-center gap-space-sm">
-          <span class="text-on-surface flex items-center gap-space-xs">
-            <span class="w-1.5 h-1.5 rounded-full ${engine.is_mocked ? "bg-outline-variant" : "bg-secondary"}"></span>
-            ${engine.name}
-          </span>
-          <div class="text-right">
-            <span class="px-space-xs py-space-2xs rounded text-mono-sm ${
-              engine.is_mocked
-                ? "bg-surface-container text-on-surface-variant"
-                : "bg-secondary/10 text-secondary font-semibold"
-            }">${engine.is_mocked ? "DEMO ADAPTER" : "REAL"}</span>
-            <div class="font-mono-sm text-mono-sm text-outline mt-space-2xs">${engine.backend}</div>
-          </div>
-        </div>`)
-      .join("");
-
-    const real = engines.filter((e) => !e.is_mocked).map((e) => e.name);
-    const mocked = engines.filter((e) => e.is_mocked).map((e) => e.name);
-    document.getElementById("review-real").textContent = real.join(", ") || "none";
-    document.getElementById("review-mocked").textContent = `${mocked.length} of ${engines.length} stages`;
-  }
-
-  // --- interactions ------------------------------------------------------
-  ["cfg-library", "cfg-sa", "cfg-admet", "cfg-affinity", "cfg-kinetics",
-   "cfg-strict-admet", "cfg-shortlist"].forEach((id) => {
-    document.getElementById(id).addEventListener("change", renderReview);
-    document.getElementById(id).addEventListener("input", renderReview);
+  document.getElementById("box-check").addEventListener("click", async () => {
+    const msg = document.getElementById("box-msg");
+    const v = (id) => Number(document.getElementById(id).value);
+    try {
+      const r = await API.validateBox(targetId, { center: [v("bx"), v("by"), v("bz")], size: [v("sx"), v("sy"), v("sz")] });
+      state.manual = r; msg.className = "font-mono-sm text-mono-sm text-secondary";
+      msg.textContent = `Box OK — ${r.protein_atoms_in_box} protein atoms inside.`;
+    } catch (e) { state.manual = null; msg.className = "font-mono-sm text-mono-sm text-error"; msg.textContent = e.message; }
+    renderReview();
   });
 
-  document.getElementById("json-btn").addEventListener("click", () => {
-    const pre = document.getElementById("json-preview");
-    pre.hidden = !pre.hidden;
-  });
+  ["cfg-source", "cfg-count", "cfg-seed", "cfg-effort", "cfg-exh", "cfg-clash", "cfg-modes", "cfg-keep", "cfg-hyde", "cfg-sa", "cfg-admet", "cfg-strict", "cfg-rank", "cfg-mock", "cfg-chain", "cfg-grow"]
+    .forEach((id) => { const el = document.getElementById(id); el.addEventListener("change", sync); el.addEventListener("input", renderReview); });
 
   document.getElementById("start-btn").addEventListener("click", async () => {
     clearError("start-error");
-    const button = document.getElementById("start-btn");
-    button.disabled = true;
-    document.getElementById("start-label").textContent = "Creating job…";
+    if (state.siteKey === "manual" && !state.manual) return showError("start-error", "Check the manual box first.");
+    const btn = document.getElementById("start-btn"); btn.disabled = true;
+    document.getElementById("start-label").textContent = "Starting…";
     try {
-      const job = await API.createJob(readConfig());
-      // Job exists and the pipeline is running — hand off to the run screen.
+      const job = await API.createJob(cfg());
       window.location.href = `dashboard.html?job=${job.job_id}`;
-    } catch (error) {
-      button.disabled = false;
-      document.getElementById("start-label").textContent = "Start Discovery";
-      showError("start-error", error.message, error.checks);
+    } catch (e) {
+      btn.disabled = false; document.getElementById("start-label").textContent = "Start campaign";
+      showError("start-error", e.message);
     }
   });
 
-  (async function init() {
-    const breadcrumb = [
-      { label: "Discoveries", href: "discoveries.html" },
-      { label: "New Discovery", href: "new-discovery.html" },
-      { label: "Configure & Review" },
-    ];
-    Shell.render({ active: "configure", breadcrumb });
-    Shell.loadEngines();
-
-    if (!targetId) {
-      showError("load-error", "No target selected. Start from New Discovery.");
-      return;
-    }
+  async function loadLibraryCache() {
     try {
-      target = await API.target(targetId);
-      renderTarget(target);
-      renderEngines(await API.engines());
-      renderReview();
+      const st = await API.get("/api/library/status");
+      const n = st.cached_molecules;
+      document.getElementById("lib-cache").textContent = n
+        ? `Already cached on this server: ${st.cached.length} of ${st.chunks_total} ZINC chunks, about ${n.toLocaleString()} molecules (nothing is stored in the database).`
+        : `Nothing cached yet: the first ZINC run downloads about ${st.prefix_mb_setting} MB (roughly 30 seconds).`;
+    } catch (_) { /* informational only */ }
+  }
+
+  (async function init() {
+    const breadcrumb = [{ label: "Discoveries", href: "discoveries.html" }, { label: "New Discovery", href: "new-discovery.html" }, { label: "Set up" }];
+    Shell.render({ active: "configure", breadcrumb }); Shell.loadEngines();
+    if (!targetId) return showError("load-error", "No protein selected. Start from New Discovery.");
+    try {
+      [target, tools] = await Promise.all([API.target(targetId), API.tools()]);
+      const siteInfo = await API.sites(targetId);
+      sites = siteInfo.sites;
+      state.siteKey = sites.length ? sites[0].key : "manual";
+      state.engine = tools.tools.vina.available ? "vina" : (tools.tools.flexx.available ? "flexx" : "vina");
+      const wanted = params.get("engine");   // e.g. ?engine=flexx preselects it
+      if (wanted && tools.tools[wanted] && tools.tools[wanted].available && ["vina", "flexx"].includes(wanted)) state.engine = wanted;
+      const chains = target.chains || [];
+      if (chains.length > 1) {
+        document.getElementById("chain-row").hidden = false;
+        document.getElementById("cfg-chain").innerHTML = chains.map((c) =>
+          `<option value="${esc(c.chain_id)}" ${c.chain_id === (chainParam || target.selected_chain) ? "selected" : ""}>Chain ${esc(c.chain_id)} (${c.residue_count} residues)</option>`).join("");
+      }
+      document.getElementById("staging-target").textContent = target.pdb_id || target.name;
+      document.getElementById("back-btn").href = `target-validation.html?target=${target.target_id}`;
       document.getElementById("content").hidden = false;
-      Shell.render({
-        active: "configure",
-        breadcrumb,
-        context: [{ label: "TARGET", value: `${target.name}${target.pdb_id ? ` (${target.pdb_id})` : ""}` }],
-      });
+      sync(); loadLibraryCache();
+      Shell.render({ active: "configure", breadcrumb, context: [{ label: "PROTEIN", value: `${target.name}${target.pdb_id ? ` (${target.pdb_id})` : ""}` }] });
       Shell.loadEngines();
-    } catch (error) {
-      showError("load-error", error.message, error.checks);
-    }
+    } catch (e) { showError("load-error", e.message, e.checks); }
   })();
 </script>
 </body>

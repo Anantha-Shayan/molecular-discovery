@@ -57,10 +57,23 @@ const API = {
   },
   target: (id) => API.get(`/api/targets/${id}`),
   structure: (id) => API.get(`/api/targets/${id}/structure`),
-  engines: () => API.get("/api/engines"),
+  tools: () => API.get("/api/tools"),
+  sites: (id, padding = 6) => API.get(`/api/targets/${id}/sites?padding=${padding}`),
+  validateBox: (id, body) => API.postJSON(`/api/targets/${id}/sites/validate-box`, body),
   jobs: () => API.get("/api/jobs"),
   job: (id) => API.get(`/api/jobs/${id}`),
   createJob: (payload) => API.postJSON("/api/jobs", payload),
+  batches: (id, stage) => API.get(`/api/jobs/${id}/batches${stage ? `?stage=${stage}` : ""}`),
+  batchLog: (id, batchId) => API.get(`/api/jobs/${id}/batches/${batchId}/log`),
+  molecules: (id, outcome) => API.get(`/api/jobs/${id}/molecules${outcome ? `?outcome=${outcome}` : ""}`),
+  candidates: (id) => API.get(`/api/jobs/${id}/candidates`),
+  analogues: (id) => API.get(`/api/jobs/${id}/analogues`),
+  candidate: (id) => API.get(`/api/candidates/${id}`),
+  complex: (id) => API.get(`/api/candidates/${id}/complex`),
+  artifacts: (id) => API.get(`/api/jobs/${id}/artifacts`),
+  cancel: (id) => API.postJSON(`/api/jobs/${id}/cancel`, {}),
+  resume: (id) => API.postJSON(`/api/jobs/${id}/resume`, {}),
+  retry: (id, body) => API.postJSON(`/api/jobs/${id}/retry`, body),
 };
 
 // ---------------------------------------------------------------------------
@@ -188,7 +201,7 @@ const Shell = {
         <div class="flex items-center gap-space-md">
           <span class="hidden sm:flex items-center gap-space-xs px-space-sm py-space-2xs bg-surface-container-low rounded border border-surface-container-high font-mono-sm text-mono-sm text-on-surface-variant">
             <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-            Local MVP · SQLite
+            Live
           </span>
           <a href="new-discovery.html"
              class="px-space-md py-space-xs bg-primary hover:bg-primary-container text-on-primary rounded font-headline-sm text-headline-sm transition-colors flex items-center gap-space-xs">
@@ -234,20 +247,9 @@ const Shell = {
         <nav class="space-y-space-2xs">${steps}</nav>
 
         <div class="mt-space-lg font-label-caps text-label-caps text-outline uppercase tracking-wider mb-space-sm px-space-xs">
-          Execution Environment
+          This server
         </div>
-        <div class="px-space-xs space-y-space-xs font-mono-sm text-mono-sm text-on-surface-variant">
-          <div class="p-space-sm rounded bg-surface-container-low border border-surface-container-high space-y-space-2xs">
-            <div class="flex justify-between"><span class="text-outline">Runtime</span><span>Local process</span></div>
-            <div class="flex justify-between"><span class="text-outline">Execution</span><span>In-process task</span></div>
-            <div class="flex justify-between"><span class="text-outline">Database</span><span>SQLite</span></div>
-            <div class="flex justify-between"><span class="text-outline">Artifacts</span><span>data/runs/</span></div>
-          </div>
-          <p class="text-outline leading-snug px-space-2xs">
-            No cluster, queue or GPU pool is used by this MVP. Production
-            direction is documented in the README.
-          </p>
-        </div>
+        <div id="sidebar-limits" class="px-space-xs font-mono-sm text-mono-sm text-on-surface-variant"></div>
       </div>
       <div class="p-space-md border-t border-surface-container-high bg-surface-container-low">
         <div class="font-label-caps text-label-caps text-outline uppercase tracking-wider mb-space-xs">
@@ -259,21 +261,30 @@ const Shell = {
       </div>`;
   },
 
-  /** Fills the sidebar engine list from /api/engines — never hardcoded. */
+  /** Fills the sidebar from /api/tools: what can really run here. Never hardcoded. */
   async loadEngines() {
     const host = document.getElementById("sidebar-engines");
     if (!host) return;
     try {
-      const engines = await API.engines();
-      host.innerHTML = engines
-        .map(
-          (engine) => `
-          <div class="flex items-center justify-between gap-space-xs" title="${esc(engine.note)}">
-            <span class="truncate">${esc(engine.name)}</span>
-            ${badgeHTML(engine.is_mocked)}
-          </div>`
-        )
-        .join("");
+      const info = await API.tools();
+      const rows = Object.values(info.tools).map((t) => `
+        <div class="flex items-center justify-between gap-space-xs" title="${esc(t.reason || t.license_detail || t.version || "")}">
+          <span class="truncate">${esc(t.name.replace("BioSolveIT ", ""))}</span>
+          <span class="shrink-0 px-space-xs py-space-2xs rounded text-mono-sm ${t.available ? "bg-secondary-container/60 text-on-secondary-container font-semibold" : "bg-error-container text-on-error-container"}">${t.available ? "ready" : "not installed"}</span>
+        </div>`);
+      rows.push(...info.models.map((m) => `
+        <div class="flex items-center justify-between gap-space-xs"><span class="truncate">ADMET-AI</span>
+        <span class="shrink-0 px-space-xs py-space-2xs rounded text-mono-sm bg-secondary-container/60 text-on-secondary-container font-semibold">ready</span></div>`));
+      rows.push(...info.mocked.map((m) => `
+        <div class="flex items-center justify-between gap-space-xs" title="${esc(m.reason)}"><span class="truncate">${esc(m.name)}</span>${badgeHTML(true)}</div>`));
+      host.innerHTML = rows.join("");
+      const lim = document.getElementById("sidebar-limits");
+      if (lim) lim.innerHTML = `
+        <div class="p-space-sm rounded bg-surface-container-low border border-surface-container-high space-y-space-2xs">
+          <div class="flex justify-between"><span class="text-outline">CPU budget</span><span>${info.limits.cpu_budget} threads</span></div>
+          <div class="flex justify-between"><span class="text-outline">Parallel batches</span><span>${info.limits.max_parallel_batches}</span></div>
+          <div class="flex justify-between"><span class="text-outline">Batch size</span><span>${info.limits.batch_size}</span></div>
+        </div>`;
     } catch (error) {
       host.innerHTML = `<div class="text-error">Backend unreachable</div>`;
     }
