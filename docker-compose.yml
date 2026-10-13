@@ -60,6 +60,14 @@ services:
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
       DB_WAIT_TIMEOUT_SECONDS: ${DB_WAIT_TIMEOUT_SECONDS:-60}
+      # ChemAIRS SAScore API (commercial; optional). Unset -> falls back to the local RDKit SAscore
+      # automatically, so leaving these blank is always safe. See .env.prod.example / docs/DEPLOYMENT.md.
+      CHEMAIRS_BASE_URL: ${CHEMAIRS_BASE_URL:-}
+      CHEMAIRS_API_KEY: ${CHEMAIRS_API_KEY:-}
+      CHEMAIRS_MODE: ${CHEMAIRS_MODE:-2}
+      CHEMAIRS_MATERIAL_SOURCE: ${CHEMAIRS_MATERIAL_SOURCE:-0}
+      CHEMAIRS_POLL_INTERVAL_SECONDS: ${CHEMAIRS_POLL_INTERVAL_SECONDS:-3}
+      CHEMAIRS_POLL_TIMEOUT_SECONDS: ${CHEMAIRS_POLL_TIMEOUT_SECONDS:-300}
       # Scientific tools. Vina is baked into the image. BioSolveIT tools are only present where the
       # environment override mounts them (never in the image); absent tools are reported as unavailable.
       VINA_BIN: /usr/local/bin/vina

@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from backend.config import APP_ROOT  # noqa: E402
+from backend.config import APP_ROOT, settings  # noqa: E402
 from backend.science import receptor as recep  # noqa: E402
 from backend.science import site as sitelib  # noqa: E402
 from backend.science.engines.common import DockInput, DockSettings  # noqa: E402
@@ -105,6 +105,20 @@ def main():
         assert r[0]["values"]["HIA_Hou"] > 0.5
         return r[0]["profile"]
     step("ADMET-AI", admet)
+
+    if not settings.chemairs_configured:
+        results.append(("ChemAIRS SAScore", "SKIP", "CHEMAIRS_BASE_URL / CHEMAIRS_API_KEY not set (using RDKit SAscore)"))
+    else:
+        def chemairs():
+            from backend.stages import sa_scoring
+            out = sa_scoring.score_batch_for_stage(SMILES)
+            assert all("error" not in r for r in out), out
+            # PRINTED, not just asserted: read these numbers by eye. The documentation never states
+            # the SAScore scale/direction, so this is the first live evidence of what it actually means.
+            for smi, r in zip(SMILES, out):
+                print(f"    {smi}  ->  sa_score={r['sa_score']}  feasibility={r.get('chemairs_feasibility_score')}  remark={r.get('chemairs_remark')!r}")
+            return f"{len(out)} scored via {sa_scoring.CHEMAIRS_METHOD} -- READ THE SCORES ABOVE BY EYE"
+        step("ChemAIRS SAScore", chemairs)
 
     width = max(len(n) for n, _, _ in results)
     for name, status, detail in results:

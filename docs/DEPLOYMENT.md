@@ -79,6 +79,7 @@ https://download.pytorch.org/whl/cpu -c constraints.txt -r requirements.txt`, pu
 ```bash
 curl -s localhost:8008/ready                       # {"status":"ready"...}
 curl -s localhost:8008/api/tools | python3 -m json.tool   # vina/hyde/flexx: available:true, license_ok:true
+                                                            # (models[].chemairs_sascore: available:true if configured — see §6)
 $C exec app python scripts/verify_tools.py   # runs each REAL tool; FlexX shows SKIP only if not installed
 python scripts/run_campaign.py --base http://127.0.0.1:8008 --engine flexx --count 20 --label "server acceptance (FlexX)"
 python scripts/run_campaign.py --base http://127.0.0.1:8008 --engine vina  --count 20 --label "server acceptance (Vina)"
@@ -105,7 +106,53 @@ at a time; others queue.
   with `alembic upgrade`; to roll the schema back too: `docker compose run --rm app alembic downgrade 0001`
   (0002 only adds tables/columns). Destructive reset (deletes all data): `docker compose down -v`.
 
-## 6. Caddy (bundled reverse proxy, optional)
+## 6. ChemAIRS SAScore API (commercial, optional)
+
+Replaces the local RDKit SAscore for the main pipeline's SA stage with the ChemAIRS commercial API
+(`~/Desktop/APIInterfaceDocumentationEN.pdf`, section "1. SAScore API"), when configured. Leaving it
+unconfigured is always safe — the app falls back to RDKit automatically, with no other behaviour change.
+
+**Before using it on a real campaign, resolve this open question — the vendor documentation never
+states it:** the numeric scale and direction of ChemAIRS's `SAScore` field (RDKit's is 1=easy..10=hard;
+every worked example in the vendor PDF uses a placeholder value of `"0"`). Until confirmed, the SA
+stage reports ChemAIRS scores with `"scale": "unknown (confirm with ChemAIRS before trusting sa_limit
+filtering)"` rather than assuming it matches RDKit — meaning `sa_limit` filtering will likely do the
+wrong thing (too strict, too lenient, or backwards) until this is confirmed.
+
+**Steps:**
+1. `cp .env.prod.example .env.prod` (if not already done), then set:
+   ```
+   CHEMAIRS_BASE_URL=https://your-chemairs-domain.example.com   # no trailing slash, no /open/v2 suffix
+   CHEMAIRS_API_KEY=sk-...
+   ```
+2. Restart the app so it picks up the new environment: `$C up -d app` (no rebuild needed — these are
+   runtime env vars, not baked into the image).
+3. Confirm it's seen: `curl -s localhost:8008/api/tools | python3 -m json.tool` — look for
+   `models[].key == "chemairs_sascore"` with `"available": true`.
+4. **Run the real verification and read the printed numbers — don't just check PASS/FAIL:**
+   ```bash
+   $C exec app python scripts/verify_tools.py
+   ```
+   This prints each test molecule's SMILES alongside its raw `sa_score`, `feasibility`, and `remark`
+   from ChemAIRS. Compare a known-easy molecule (e.g. aspirin) against a known-hard one (a heavily
+   decorated, multi-ring, stereo-rich molecule) — whichever direction gives the expected easy/hard
+   ordering **is** the scale. Also run the same check locally first if possible (same command, no
+   Docker): `pytest -m real tests/integration/test_chemairs.py -v -s` — it does the same thing before
+   touching the server.
+5. Once the scale is confirmed, update `sa_scoring.score_batch_for_stage`'s `"scale"` string in
+   `backend/stages/sa_scoring.py` to state it plainly, and double-check the `sa_limit` value used in
+   campaign setup still means what you intend on the new scale (it may need inverting or rescaling).
+6. Everyday operation after that: nothing — the "sa" pipeline stage uses ChemAIRS automatically whenever
+   it's configured, one API task per batch (not one call per molecule), and each stage's recorded `tool`
+   name shows which engine actually ran (`ChemAIRS SAScore API` vs `RDKit SAscore (...)`), visible per
+   campaign in the UI and via `/api/jobs/{id}`.
+
+If ChemAIRS becomes unreachable mid-deployment (network issue, revoked key, rate limit), the SA stage's
+batch fails with the real error message attached (see the batch log in the UI) — it does **not** silently
+fall back to RDKit mid-campaign, so a run that was using ChemAIRS stays comparable throughout. Unset the
+two variables and restart to switch back to RDKit deliberately.
+
+## 7. Caddy (bundled reverse proxy, optional)
 
 The API has no login of its own, so something must sit in front of it before anyone but you can reach
 it. `docker-compose.prod.yml` includes a `caddy` service for this — `docker compose ... up -d` starts it
@@ -141,10 +188,10 @@ sudo ss -ltnp '( sport = :80 or sport = :443 )'
 No other file changes are needed; `app` keeps its own `127.0.0.1:8008` binding for direct SSH-tunnelled
 debugging, which doesn't conflict with Caddy on 80/443.
 
-## 7. Security notes
+## 8. Security notes
 
 Uploads are size-limited and parsed, never executed; tool arguments are argv lists (no shell); child
 processes get a minimal environment (no `DATABASE_URL`); the licence path, never its content, is passed to
 the vendor tool; `/api/tools` shows tool names/versions only; the container is read-only, non-root,
-`cap_drop: ALL`. The API has **no authentication of its own** — §6's Caddy (or the company's existing
+`cap_drop: ALL`. The API has **no authentication of its own** — §7's Caddy (or the company's existing
 nginx/SSO) is what actually protects it; don't skip that step on a reachable network.

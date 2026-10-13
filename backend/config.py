@@ -133,6 +133,17 @@ class Settings:
     max_batch_attempts: int
     zinc_cache_dir: Path
     zinc_prefix_mb: int
+    # --- ChemAIRS SAScore API (commercial, replaces the local RDKit SAscore when configured)
+    chemairs_base_url: str | None   # e.g. https://airs.example.com  (no trailing slash, no /open/v2 suffix)
+    chemairs_api_key: str | None
+    chemairs_mode: int              # 2 = Fast (default), 4 = Slow
+    chemairs_material_source: int   # 0 = all building blocks, 1 = available only
+    chemairs_poll_interval_seconds: float
+    chemairs_poll_timeout_seconds: float
+
+    @property
+    def chemairs_configured(self) -> bool:
+        return bool(self.chemairs_base_url and self.chemairs_api_key)
 
     @property
     def is_development(self) -> bool:
@@ -230,6 +241,12 @@ def load_settings() -> Settings:
         max_batch_attempts=max(1, _int("MAX_BATCH_ATTEMPTS", 3)),
         zinc_cache_dir=data_dir / "library_cache",
         zinc_prefix_mb=max(1, min(500, _int("ZINC_PREFIX_MB", 3))),
+        chemairs_base_url=(_str("CHEMAIRS_BASE_URL") or "").rstrip("/") or None,
+        chemairs_api_key=_str("CHEMAIRS_API_KEY"),
+        chemairs_mode=4 if _int("CHEMAIRS_MODE", 2) == 4 else 2,
+        chemairs_material_source=1 if _int("CHEMAIRS_MATERIAL_SOURCE", 0) == 1 else 0,
+        chemairs_poll_interval_seconds=max(1.0, _float("CHEMAIRS_POLL_INTERVAL_SECONDS", 3.0)),
+        chemairs_poll_timeout_seconds=max(10.0, _float("CHEMAIRS_POLL_TIMEOUT_SECONDS", 300.0)),
     )
 
 
