@@ -288,3 +288,60 @@ def test_same_seed_gives_the_same_sample_and_a_different_seed_a_different_one(tm
     ids = lambda r: [m["external_id"] for m in r]  # noqa: E731
     assert ids(a) == ids(b)
     assert ids(a) != ids(c)
+
+
+# ------------------------------------------------------------------ ChemAIRS SAScore ---
+def test_chemairs_create_payload_uses_documented_fields_and_defaults():
+    from backend.science import chemairs
+    body = chemairs.build_create_payload(["CCO", "c1ccccc1"])
+    assert body["smiles"] == ["CCO", "c1ccccc1"]
+    assert body["useELNData"] is False and body["mode"] in (2, 4) and body["materialSource"] in (0, 1)
+    assert "callbackUrl" not in body
+    assert chemairs.build_create_payload(["CCO"], callback_url="https://x/cb")["callbackUrl"] == "https://x/cb"
+    with pytest.raises(ValueError):
+        chemairs.build_create_payload([])
+
+
+def test_chemairs_parses_the_documented_results_page_shape():
+    """Payload shape taken verbatim from APIInterfaceDocumentationEN.pdf section 1.2."""
+    from backend.science import chemairs
+    payload = {
+        "totalCount": 2,
+        "progress": "2 / 2",
+        "searchResponseDtos": [
+            {"remark": "Available for purchase", "isError": False, "code": "1", "smiles": "c1ccccc2[nH]1",
+             "saScore": "0", "feasibility": "N/A", "feasibilityScore": "0", "status": 2},
+            {"remark": "some problem", "isError": True, "code": "2", "smiles": "bad",
+             "saScore": None, "status": 500},
+        ],
+    }
+    total, progress, rows = chemairs.parse_results_page(payload)
+    assert total == 2 and progress == "2 / 2" and len(rows) == 2
+    assert rows[0].row_number == 1 and rows[0].is_error is False and rows[0].sa_score == 0.0
+    assert rows[1].row_number == 2 and rows[1].is_error is True and rows[1].sa_score is None
+
+
+def test_chemairs_score_batch_rejects_when_not_configured(monkeypatch):
+    from backend.science import chemairs
+    import dataclasses
+    monkeypatch.setattr(chemairs, "settings", dataclasses.replace(chemairs.settings, chemairs_api_key=None))
+    with pytest.raises(chemairs.ChemAIRSError):
+        chemairs.create_task(["CCO"])
+
+
+def test_sa_stage_falls_back_to_rdkit_when_chemairs_not_configured():
+    from backend.stages import sa_scoring
+    assert sa_scoring.active_method() == sa_scoring.RDKIT_METHOD  # no key set in the test environment
+    out = sa_scoring.score_batch_for_stage(["CCO", "not-a-smiles(("])
+    assert out[0]["method"] == sa_scoring.RDKIT_METHOD and 1 <= out[0]["sa_score"] <= 10
+    assert "error" in out[1]
+
+
+def test_sa_stage_batch_is_duplicate_smiles_safe():
+    """Same class of bug fixed in backend/science/admet.py: results must correlate by
+    position, never by SMILES value, since a batch can contain the same SMILES twice."""
+    from backend.stages import sa_scoring
+    out = sa_scoring.score_batch_for_stage(["CCO", "c1ccccc1", "CCO"])
+    assert len(out) == 3
+    assert out[0]["sa_score"] == out[2]["sa_score"]  # same molecule, same score, but still two entries
+    assert out[0] is not out[2]

@@ -46,7 +46,17 @@ def tools():
     st = {k: v.public() for k, v in registry.tool_statuses().items()}
     return {
         "tools": st,
-        "models": [{"key": "admet", "name": admet_model.MODEL_NAME, "available": True}],
+        "models": [
+            {"key": "admet", "name": admet_model.MODEL_NAME, "available": True},
+            {
+                "key": "chemairs_sascore", "name": "ChemAIRS SAScore API",
+                "available": settings.chemairs_configured,
+                "reason": None if settings.chemairs_configured else
+                    "CHEMAIRS_BASE_URL / CHEMAIRS_API_KEY not set; using the local RDKit SAscore instead.",
+                "note": "Not network-checked here (configuration presence only); see the SA stage's "
+                        "own log/detail for the engine actually used on the last run.",
+            },
+        ],
         "mocked": [
             {"key": "affinity", "name": "Binding affinity (Koffee)", "reason": "Koffee integration pending; placeholder values only."},
             {"key": "kinetics", "name": "Unbinding kinetics (Koffee)", "reason": "Koffee integration pending; placeholder values only."},

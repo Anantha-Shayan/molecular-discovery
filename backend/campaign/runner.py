@@ -593,7 +593,8 @@ def _tool_label(p: dict, stage: str) -> str | None:
         st = registry.get("hydescorer")
         return f"{st.name} {st.version or ''}".strip()
     if stage == "sa":
-        return "RDKit SAscore (Ertl & Schuffenhauer 2009)"
+        from ..stages import sa_scoring
+        return sa_scoring.active_method()
     if stage == "admet":
         from ..science import admet
         return admet.MODEL_NAME

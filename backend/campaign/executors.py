@@ -158,13 +158,16 @@ def run_hyde(ctx: Ctx, mols: list[MolRef], batch_dir: Path, log_path: Path,
 
 
 def run_sa(ctx: Ctx, mols: list[MolRef], *_a, progress: Progress, **_k) -> list[MolOutcome]:
+    # One batch -> one call: RDKit scores each molecule in-process anyway, and the
+    # ChemAIRS engine (when configured) takes a SMILES collection per task, so either
+    # way this is the right granularity — never one network round trip per molecule.
+    results = sa_scoring.score_batch_for_stage([m.smiles for m in mols])
     out = []
-    for m in mols:
-        try:
-            r = sa_scoring.score_molecule(m.smiles)
+    for m, r in zip(mols, results):
+        if "error" in r:
+            out.append(MolOutcome(m.id, False, error=r["error"]))
+        else:
             out.append(MolOutcome(m.id, True, r))
-        except Exception as exc:  # noqa: BLE001 - molecule-level failure
-            out.append(MolOutcome(m.id, False, error=f"{exc.__class__.__name__}: {exc}"))
     progress(sum(o.ok for o in out), sum(not o.ok for o in out))
     return out
 
