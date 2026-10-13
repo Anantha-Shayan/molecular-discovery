@@ -78,6 +78,17 @@ class CreateJobRequest(BaseModel):
     library_count: int = 30
     library_seed: int = 42
     library_upload: str | None = Field(default=None, max_length=2_000_000)
+    filter_min_heavy: int = 10
+    filter_max_heavy: int = 40
+    filter_min_mw: float = 150.0
+    filter_max_mw: float = 600.0
+    filter_min_logp: float = -5.0
+    filter_max_logp: float = 5.0
+    filter_max_rotatable: int = 12
+    filter_max_hbd: int = 5
+    filter_max_hba: int = 10
+    filter_max_tpsa: float = 140.0
+    filter_reactivity: str = "mild"
     exhaustiveness: int = 8
     num_modes: int = 5
     clash_tolerance: int = 0

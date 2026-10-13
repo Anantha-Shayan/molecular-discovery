@@ -53,8 +53,26 @@ applicability-domain estimate.
 the first `ZINC_PREFIX_MB` (default 3) MB of one chunk — chosen by the seed — is fetched by HTTP range request, cached
 in `<DATA_DIR>/library_cache` (not in the database; `scripts/prefetch_zinc.py` fills it ahead of time or deeper) and
 sampled with the seed: the same seed gives the same molecules. Catalogue compounds are not novel molecules. The archive is ordered by ID, so the sample is
-reproducible but not uniformly random over ZINC. Filters: 10–40 heavy atoms, MW 150–600, ≤ 12 rotatable bonds,
-C/H/N/O/F/P/S/Cl/Br/I, largest fragment, neutralised, de-duplicated by InChIKey.
+reproducible but not uniformly random over ZINC.
+
+**Measured, not assumed: this archive is narrowly size-banded.** Checked 7 of the 20 chunks directly (RDKit heavy-atom
+count on a 400-500 molecule sample of each): every chunk's molecules cluster inside roughly 16-31 heavy atoms (e.g.
+chunk 11 was 20-23, chunk 9 was 16-24, chunk 5 was 21-31) — none span the true ZINC range from small fragments (<15
+atoms) to large compounds (>35 atoms). This means a fragment-like filter (see below) will very likely keep zero
+molecules from this source regardless of count/seed, not because the filter is broken but because the archive itself
+doesn't contain that size class. The default filter range (10-40 heavy atoms) was chosen to comfortably straddle the
+observed band, which is why it has always worked in every campaign run so far.
+
+**Property filters** (configurable per campaign, `backend/science/library.py::Filters`, same dimensions ZINC's own
+tranche grid and `/substances` search use): heavy atoms, MW, logP, rotatable bonds, H-bond donor/acceptor count, TPSA,
+and a reactivity level (`mild`/`clean`/`anodyne`, modelled on ZINC's published tranche definitions — `mild` is ZINC's
+own default and excludes nothing extra; `clean` excludes aldehydes/thiols/Michael acceptors by real RDKit SMARTS match;
+`anodyne` adds RDKit's full PAINS catalogue, 480 patterns). Defaults: 10-40 heavy atoms, MW 150-600, logP -5 to 5,
+<= 12 rotatable bonds, <= 5 H-bond donors, <= 10 acceptors, TPSA <= 140, reactivity=mild. Always applied, regardless
+of element restriction (C/H/N/O/F/P/S/Cl/Br/I), largest-fragment selection, neutralisation and InChIKey dedup.
+**Not offered, and would be dishonest to fake:** ZINC's own `/substances` page can also filter by purchasability tier
+(in-stock/on-demand/agent/boutique), pH state and net charge — those need live ZINC catalogue/vendor metadata that
+the flat "Deep Docking" SMILES archive does not carry at all, so there is no honest way to filter on them here.
 
 **Ranking.** One named measure (default HYDE cumulative score), ties by SA; mocked values never participate.
 

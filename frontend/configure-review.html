@@ -138,6 +138,57 @@
           </div>
           <p id="lib-note" class="mt-space-sm font-mono-sm text-mono-sm text-outline"></p>
           <p id="lib-cache" class="mt-space-2xs font-mono-sm text-mono-sm text-outline"></p>
+
+          <div class="mt-space-md border-t border-outline-variant pt-space-sm">
+            <button type="button" id="filter-toggle" class="flex items-center gap-space-xs font-headline-sm text-headline-sm text-on-surface">
+              <span id="filter-caret">&#9656;</span> Property filters <span class="font-mono-sm text-mono-sm text-outline">(same dimensions as ZINC's own substance search)</span>
+            </button>
+            <div id="filter-panel" hidden class="mt-space-sm space-y-space-sm">
+              <p class="font-body-sm text-body-sm text-on-surface-variant">
+                Every candidate molecule is checked against these before docking, regardless of source. Molecules outside any
+                range are dropped during the library step (see <em>Removed by a rule</em> after the run for exact counts).
+                <strong class="text-on-surface">Not available here:</strong> ZINC's own site can also filter by purchasability
+                tier, pH state and net charge — those need live ZINC catalogue/vendor data our offline SMILES download does not
+                carry, so they cannot be offered honestly.
+              </p>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-space-sm font-mono-data text-mono-data">
+                <label>Heavy atoms, min
+                  <input id="flt-min-heavy" type="number" value="10" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label>Heavy atoms, max
+                  <input id="flt-max-heavy" type="number" value="40" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label>Molecular weight, min
+                  <input id="flt-min-mw" type="number" value="150" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label>Molecular weight, max
+                  <input id="flt-max-mw" type="number" value="600" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label>LogP, min
+                  <input id="flt-min-logp" type="number" step="0.1" value="-5" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label>LogP, max
+                  <input id="flt-max-logp" type="number" step="0.1" value="5" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label>Rotatable bonds, max
+                  <input id="flt-max-rot" type="number" value="12" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label>TPSA, max (&#197;&#178;)
+                  <input id="flt-max-tpsa" type="number" value="140" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label>H-bond donors, max
+                  <input id="flt-max-hbd" type="number" value="5" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label>H-bond acceptors, max
+                  <input id="flt-max-hba" type="number" value="10" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+                <label class="col-span-2">Reactivity (ZINC tranche levels)
+                  <select id="flt-reactivity" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded">
+                    <option value="mild" selected>Mild — ZINC's own default; PAINS and weakly reactive groups allowed</option>
+                    <option value="clean">Clean — excludes aldehydes, thiols, Michael acceptors</option>
+                    <option value="anodyne">Anodyne — clean, plus the full PAINS pattern catalogue removed</option>
+                  </select></label>
+              </div>
+              <div class="flex gap-space-sm">
+                <button type="button" id="filter-reset-lipinski" class="font-mono-sm text-mono-sm px-space-sm h-7 bg-surface-container-high rounded">Preset: drug-like (Lipinski)</button>
+                <button type="button" id="filter-reset-fragment" class="font-mono-sm text-mono-sm px-space-sm h-7 bg-surface-container-high rounded" title="The ZINC20 archive this app streams from has been measured to contain almost no fragment-sized molecules (every chunk checked clustered around 16-31 heavy atoms) — this preset will likely keep zero molecules from that source. It still applies normally to the built-in drug list or your own uploaded molecules.">Preset: fragment-like &#9888;</button>
+                <button type="button" id="filter-reset-default" class="font-mono-sm text-mono-sm px-space-sm h-7 bg-surface-container-high rounded">Reset to default</button>
+              </div>
+              <p class="font-body-sm text-body-sm text-warning">&#9888; Measured directly: the ZINC20 archive this app streams from contains almost no
+                fragment-sized molecules (every chunk checked clustered around 16-31 heavy atoms) — the fragment-like preset will likely keep zero
+                molecules when the source is ZINC20. It works normally against the built-in drug list or your own uploaded molecules.</p>
+            </div>
+          </div>
         </section>
 
         <!-- 4 Effort & filters -->
@@ -274,6 +325,17 @@
       library_count: Number(document.getElementById("cfg-count").value),
       library_seed: Number(document.getElementById("cfg-seed").value),
       library_upload: document.getElementById("cfg-source").value === "upload" ? document.getElementById("cfg-upload").value : null,
+      filter_min_heavy: Number(document.getElementById("flt-min-heavy").value),
+      filter_max_heavy: Number(document.getElementById("flt-max-heavy").value),
+      filter_min_mw: Number(document.getElementById("flt-min-mw").value),
+      filter_max_mw: Number(document.getElementById("flt-max-mw").value),
+      filter_min_logp: Number(document.getElementById("flt-min-logp").value),
+      filter_max_logp: Number(document.getElementById("flt-max-logp").value),
+      filter_max_rotatable: Number(document.getElementById("flt-max-rot").value),
+      filter_max_hbd: Number(document.getElementById("flt-max-hbd").value),
+      filter_max_hba: Number(document.getElementById("flt-max-hba").value),
+      filter_max_tpsa: Number(document.getElementById("flt-max-tpsa").value),
+      filter_reactivity: document.getElementById("flt-reactivity").value,
       exhaustiveness: document.getElementById("cfg-effort").value === "custom"
         ? Number(document.getElementById("cfg-exh").value) : Number(document.getElementById("cfg-effort").value),
       num_modes: Number(document.getElementById("cfg-modes").value),
@@ -355,6 +417,11 @@
       demo: "<strong class=\"text-on-surface\">Built-in drugs:</strong> about 40 well-known approved drugs and reference scaffolds shipped with the app. Works offline and is a good sanity check, but most are far too large or too different from fragments of a new drug.",
       upload: "<strong class=\"text-on-surface\">Your list:</strong> paste your own molecules (SMILES, one per line, optional name). Use it for an in-house or vendor library. Every line is cleaned and checked; rejected ones are listed with the reason."
     }[src];
+    if (src === "zinc20" && !state.filterHintShown) {
+      state.filterHintShown = true;
+      document.getElementById("filter-panel").hidden = false;
+      document.getElementById("filter-caret").textContent = "▾";
+    }
     const fgOk = tools.tools.fastgrow.available && tools.tools.fastgrow_db_creator.available;
     const grow = document.getElementById("cfg-grow");
     grow.disabled = !fgOk;
@@ -368,6 +435,18 @@
     rows.push(row("Pocket", c.site.mode === "ligand" ? esc(c.site.reference) : "manual box"));
     rows.push(row("Docking", c.engine === "vina" ? "AutoDock Vina" : "BioSolveIT FlexX"));
     rows.push(row("Molecules", `${c.library_count} · ${c.library_source}`));
+    const FILTER_ID_TO_KEY = {
+      "flt-min-heavy": "filter_min_heavy", "flt-max-heavy": "filter_max_heavy",
+      "flt-min-mw": "filter_min_mw", "flt-max-mw": "filter_max_mw",
+      "flt-min-logp": "filter_min_logp", "flt-max-logp": "filter_max_logp",
+      "flt-max-rot": "filter_max_rotatable", "flt-max-tpsa": "filter_max_tpsa",
+      "flt-max-hbd": "filter_max_hbd", "flt-max-hba": "filter_max_hba", "flt-reactivity": "filter_reactivity",
+    };
+    const filtersChanged = Object.entries(FILTER_PRESETS.default).some(
+      ([id, v]) => String(c[FILTER_ID_TO_KEY[id]]) !== String(v));
+    rows.push(row("Property filters", filtersChanged
+      ? `custom (${c.filter_min_heavy}-${c.filter_max_heavy} atoms, MW ${c.filter_min_mw}-${c.filter_max_mw}, logP ${c.filter_min_logp}-${c.filter_max_logp}, ${c.filter_reactivity})`
+      : "default"));
     rows.push(row("Docking cut", c.dock_keep_fraction === 1 ? "none" : `best ${Math.round(c.dock_keep_fraction * 100)}%`));
     rows.push(row("HYDE", c.enable_hyde ? "on" : "off"));
     rows.push(row("SA limit", `≤ ${c.sa_threshold}`));
@@ -392,8 +471,28 @@
     renderReview();
   });
 
-  ["cfg-source", "cfg-count", "cfg-seed", "cfg-effort", "cfg-exh", "cfg-clash", "cfg-modes", "cfg-keep", "cfg-hyde", "cfg-sa", "cfg-admet", "cfg-strict", "cfg-rank", "cfg-mock", "cfg-chain", "cfg-grow"]
+  ["cfg-source", "cfg-count", "cfg-seed", "cfg-effort", "cfg-exh", "cfg-clash", "cfg-modes", "cfg-keep", "cfg-hyde", "cfg-sa", "cfg-admet", "cfg-strict", "cfg-rank", "cfg-mock", "cfg-chain", "cfg-grow",
+   "flt-min-heavy", "flt-max-heavy", "flt-min-mw", "flt-max-mw", "flt-min-logp", "flt-max-logp", "flt-max-rot", "flt-max-tpsa", "flt-max-hbd", "flt-max-hba", "flt-reactivity"]
     .forEach((id) => { const el = document.getElementById(id); el.addEventListener("change", sync); el.addEventListener("input", renderReview); });
+
+  document.getElementById("filter-toggle").addEventListener("click", () => {
+    const panel = document.getElementById("filter-panel");
+    panel.hidden = !panel.hidden;
+    document.getElementById("filter-caret").textContent = panel.hidden ? "▸" : "▾";
+  });
+
+  const FILTER_PRESETS = {
+    default:  { "flt-min-heavy": 10, "flt-max-heavy": 40, "flt-min-mw": 150, "flt-max-mw": 600, "flt-min-logp": -5, "flt-max-logp": 5, "flt-max-rot": 12, "flt-max-tpsa": 140, "flt-max-hbd": 5, "flt-max-hba": 10, "flt-reactivity": "mild" },
+    lipinski: { "flt-min-heavy": 5,  "flt-max-heavy": 70, "flt-min-mw": 0,   "flt-max-mw": 500, "flt-min-logp": -5, "flt-max-logp": 5, "flt-max-rot": 10, "flt-max-tpsa": 140, "flt-max-hbd": 5, "flt-max-hba": 10, "flt-reactivity": "mild" },
+    fragment: { "flt-min-heavy": 5,  "flt-max-heavy": 22, "flt-min-mw": 0,   "flt-max-mw": 300, "flt-min-logp": -3, "flt-max-logp": 3, "flt-max-rot": 3,  "flt-max-tpsa": 60,  "flt-max-hbd": 3, "flt-max-hba": 3,  "flt-reactivity": "clean" },
+  };
+  function applyPreset(name) {
+    for (const [id, val] of Object.entries(FILTER_PRESETS[name])) document.getElementById(id).value = val;
+    sync(); renderReview();
+  }
+  document.getElementById("filter-reset-default").addEventListener("click", () => applyPreset("default"));
+  document.getElementById("filter-reset-lipinski").addEventListener("click", () => applyPreset("lipinski"));
+  document.getElementById("filter-reset-fragment").addEventListener("click", () => applyPreset("fragment"));
 
   document.getElementById("start-btn").addEventListener("click", async () => {
     clearError("start-error");

@@ -350,7 +350,7 @@ def _stage_library(job_id: str) -> str:
     if have:  # resume: library already fixed for this campaign
         _set_stage(job_id, "library", "succeeded", counts=(have, have, 0), finish=True)
         return "ok"
-    filters = libsrc.Filters()
+    filters = libsrc.Filters.from_params(p)
     n = p["library_count"]
     if p["library_source"] == "zinc20":
         mols, meta = libsrc.fetch_zinc20(n, p["library_seed"], filters)

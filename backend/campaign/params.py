@@ -40,6 +40,21 @@ DEFAULTS = {
     "library_count": 30,
     "library_seed": 42,
     "library_upload": None,
+    # Structural filters applied to every candidate molecule before docking (all sources, not just
+    # ZINC) - modelled on ZINC's own tranche/"/substances" search dimensions where our data source
+    # allows (see backend/science/library.py::Filters for what cannot be replicated: purchasability,
+    # pH and net-charge state, which need live ZINC metadata we don't fetch).
+    "filter_min_heavy": 10,
+    "filter_max_heavy": 40,
+    "filter_min_mw": 150.0,
+    "filter_max_mw": 600.0,
+    "filter_min_logp": -5.0,
+    "filter_max_logp": 5.0,
+    "filter_max_rotatable": 12,
+    "filter_max_hbd": 5,
+    "filter_max_hba": 10,
+    "filter_max_tpsa": 140.0,
+    "filter_reactivity": "mild",
     "exhaustiveness": 8,
     "num_modes": 5,
     "clash_tolerance": 0,          # FlexX only: 0 standard, 1 medium, 2 high
@@ -74,6 +89,18 @@ def resolve(params: dict | None) -> dict:
     if not 1 <= p["library_count"] <= MAX_LIBRARY:
         raise ParamError(f"library_count must be between 1 and {MAX_LIBRARY}")
     p["library_seed"] = int(p["library_seed"])
+    p["filter_min_heavy"] = max(1, int(p["filter_min_heavy"]))
+    p["filter_max_heavy"] = max(p["filter_min_heavy"], int(p["filter_max_heavy"]))
+    p["filter_min_mw"] = max(0.0, float(p["filter_min_mw"]))
+    p["filter_max_mw"] = max(p["filter_min_mw"], float(p["filter_max_mw"]))
+    p["filter_min_logp"] = float(p["filter_min_logp"])
+    p["filter_max_logp"] = max(p["filter_min_logp"], float(p["filter_max_logp"]))
+    p["filter_max_rotatable"] = max(0, int(p["filter_max_rotatable"]))
+    p["filter_max_hbd"] = max(0, int(p["filter_max_hbd"]))
+    p["filter_max_hba"] = max(0, int(p["filter_max_hba"]))
+    p["filter_max_tpsa"] = max(0.0, float(p["filter_max_tpsa"]))
+    if p["filter_reactivity"] not in ("mild", "clean", "anodyne"):
+        raise ParamError("filter_reactivity must be one of mild, clean, anodyne")
     p["exhaustiveness"] = int(p["exhaustiveness"])
     if not 1 <= p["exhaustiveness"] <= 64:
         raise ParamError("exhaustiveness must be between 1 and 64")

@@ -345,3 +345,57 @@ def test_sa_stage_batch_is_duplicate_smiles_safe():
     assert len(out) == 3
     assert out[0]["sa_score"] == out[2]["sa_score"]  # same molecule, same score, but still two entries
     assert out[0] is not out[2]
+
+
+# ------------------------------------------------------------------ library filters ---
+def test_filters_reactivity_levels_are_progressively_stricter():
+    from backend.science.library import Filters, standardize
+    base = dict(min_heavy=1, max_heavy=100, min_mw=1, max_mw=1000, min_logp=-10, max_logp=10,
+                max_hbd=20, max_hba=20, max_tpsa=500, max_rotatable=20)
+    quinone = "O=C1C=CC(=O)c2ccccc12"  # a real Michael-acceptor / PAINS-pattern molecule
+    assert standardize(quinone, Filters(reactivity="mild", **base))["smiles"]
+    with pytest.raises(ValueError, match="reactive group"):
+        standardize(quinone, Filters(reactivity="clean", **base))
+    with pytest.raises(ValueError, match="reactive group"):
+        standardize(quinone, Filters(reactivity="anodyne", **base))
+    plain = "c1ccc(cc1)C(=O)Nc1ccccc1"
+    for level in ("mild", "clean", "anodyne"):
+        assert standardize(plain, Filters(reactivity=level, **base))["smiles"]
+
+
+def test_filters_reject_invalid_reactivity_level():
+    from backend.science.library import Filters
+    with pytest.raises(ValueError):
+        Filters(reactivity="not-a-real-level")
+
+
+def test_filters_logp_hbd_hba_tpsa_are_enforced():
+    from backend.science.library import Filters, standardize
+    base = dict(min_heavy=1, max_heavy=100, min_mw=1, max_mw=1000, max_rotatable=20)
+    sucrose = "OC[C@H]1O[C@@](CO)(O[C@@H]2O[C@H](CO)[C@@H](O)[C@H](O)[C@H]2O)[C@@H](O)[C@@H]1O"  # 8 HBD, 11 HBA
+    with pytest.raises(ValueError, match="H-bond donors"):
+        standardize(sucrose, Filters(min_logp=-10, max_logp=10, max_hbd=5, max_hba=20, max_tpsa=500, **base))
+    with pytest.raises(ValueError, match="H-bond acceptors"):
+        standardize(sucrose, Filters(min_logp=-10, max_logp=10, max_hbd=20, max_hba=5, max_tpsa=500, **base))
+    with pytest.raises(ValueError, match="TPSA"):
+        standardize(sucrose, Filters(min_logp=-10, max_logp=10, max_hbd=20, max_hba=20, max_tpsa=10, **base))
+    with pytest.raises(ValueError, match="logP"):
+        standardize("CCCCCCCCCCCCCCCCCCCCCC", Filters(min_logp=-10, max_logp=0, max_hbd=20, max_hba=20, max_tpsa=500, **base))
+
+
+def test_filters_from_params_matches_campaign_defaults():
+    from backend.campaign import params as P
+    from backend.science.library import Filters
+    p = P.resolve({"engine": "vina", "site": {}})
+    f = Filters.from_params(p)
+    assert (f.min_heavy, f.max_heavy, f.reactivity) == (10, 40, "mild")
+    assert f.describe()  # does not raise, mentions the honesty disclaimer
+    assert "purchasability" in f.describe().lower()
+
+
+def test_params_validates_filter_bounds_and_reactivity():
+    from backend.campaign import params as P
+    p = P.resolve({"engine": "vina", "site": {}, "filter_min_heavy": 50, "filter_max_heavy": 5})
+    assert p["filter_max_heavy"] == 50  # clamped up to not be below min, never silently inverted-wrong
+    with pytest.raises(P.ParamError):
+        P.resolve({"engine": "vina", "site": {}, "filter_reactivity": "bogus"})

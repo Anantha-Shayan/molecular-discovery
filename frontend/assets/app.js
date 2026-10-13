@@ -273,8 +273,9 @@ const Shell = {
           <span class="shrink-0 px-space-xs py-space-2xs rounded text-mono-sm ${t.available ? "bg-secondary-container/60 text-on-secondary-container font-semibold" : "bg-error-container text-on-error-container"}">${t.available ? "ready" : "not installed"}</span>
         </div>`);
       rows.push(...info.models.map((m) => `
-        <div class="flex items-center justify-between gap-space-xs"><span class="truncate">ADMET-AI</span>
-        <span class="shrink-0 px-space-xs py-space-2xs rounded text-mono-sm bg-secondary-container/60 text-on-secondary-container font-semibold">ready</span></div>`));
+        <div class="flex items-center justify-between gap-space-xs" title="${esc(m.reason || m.note || "")}">
+          <span class="truncate">${esc(m.name)}</span>
+          <span class="shrink-0 px-space-xs py-space-2xs rounded text-mono-sm ${m.available ? "bg-secondary-container/60 text-on-secondary-container font-semibold" : "bg-error-container text-on-error-container"}">${m.available ? "ready" : "not configured"}</span></div>`));
       rows.push(...info.mocked.map((m) => `
         <div class="flex items-center justify-between gap-space-xs" title="${esc(m.reason)}"><span class="truncate">${esc(m.name)}</span>${badgeHTML(true)}</div>`));
       host.innerHTML = rows.join("");
