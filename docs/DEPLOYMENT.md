@@ -171,19 +171,20 @@ sudo ss -ltnp '( sport = :80 or sport = :443 )'
   different host ports (e.g. `8080:80`) before starting.
 
 **Steps (ports free):**
-1. `docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build`
-   — brings up `postgres`, `app` and `caddy` together.
-2. Generate a password hash and put it in `Caddyfile` in place of `REPLACE_WITH_HASH`:
+1. Generate a password hash before starting the stack, then store it in `.env.prod` as
+   `CADDY_PASSWORD_HASH`. Keep the value single-quoted so Compose preserves the `$` characters:
    ```bash
    C="docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod"
-   $C exec caddy caddy hash-password
+   $C run --rm --no-deps caddy caddy hash-password
    ```
-3. Edit `Caddyfile`: change `:80` to the server's real DNS name if it has one reachable from where
+   The one-off container prompts for the password and prints its hash; it works before Caddy is running.
+   Add `CADDY_PASSWORD_HASH='<hash printed above>'` to `.env.prod`.
+2. Edit `Caddyfile`: change `:80` to the server's real DNS name if it has one reachable from where
    reviewers will connect (Caddy then provisions HTTPS automatically via Let's Encrypt); otherwise leave
    it as `:80` for plain HTTP on an internal-only hostname/IP.
-4. `$C restart caddy`
-5. Visit `http://<server-dns-or-ip>/` (or `https://` if you set a real domain) — log in with the
-   `admin` user and the password you hashed in step 2. You should see the app live.
+3. Start the stack: `$C up -d --build` — this brings up `postgres`, `app` and `caddy` together.
+4. Visit `http://<server-dns-or-ip>/` (or `https://` if you set a real domain) — log in with the
+   `admin` user and the password you hashed in step 1. You should see the app live.
 
 No other file changes are needed; `app` keeps its own `127.0.0.1:8008` binding for direct SSH-tunnelled
 debugging, which doesn't conflict with Caddy on 80/443.

@@ -27,6 +27,8 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    environment:
+      CADDY_PASSWORD_HASH: ${CADDY_PASSWORD_HASH:?Set CADDY_PASSWORD_HASH in .env.prod}
     depends_on:
       - app
     ports:
