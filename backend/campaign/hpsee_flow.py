@@ -256,7 +256,7 @@ class HPSeeDockingEngine:
     """FlexX docking on HPSee; same contract as FlexxEngine.dock_batch."""
 
     key = "hpsee"
-    name = "BioSolveIT HPSee (FlexX)"
+    name = "BioSolveIT HPSee"
     score_unit = "FlexX score"
 
     def __init__(self, job_id: str, batch_id: str, shutdown: threading.Event | None) -> None:

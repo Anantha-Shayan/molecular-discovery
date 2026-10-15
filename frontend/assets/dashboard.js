@@ -66,7 +66,7 @@ function renderTitle(j) {
 }
 
 // ------------------------------------------------------------ HPSee panels ---
-const KIND = { docking: "Docking (FlexX)", scoring: "HYDE scoring", anchoring: "Anchoring", extension: "Extension" };
+const KIND = { docking: "Docking", scoring: "HYDE scoring", anchoring: "Anchoring", extension: "Extension" };
 function taskBars(tasks) {
   return (tasks || []).map((t) => `<div class="flex items-center gap-space-sm"><span class="w-28 shrink-0">${esc(t.type || "task")}</span>
     <div class="flex-1 h-2 rounded-sm bg-surface-container-high overflow-hidden"><div class="h-2 ${t.status === 7 ? "bg-error" : t.progress === 100 ? "bg-secondary" : "bg-primary"}" style="width:${Math.max(0, Math.min(100, Number(t.progress) || 0))}%"></div></div>
@@ -335,7 +335,7 @@ async function openCandidate(id) {
     <section><h3 class="font-headline-sm text-headline-sm">Docking ${real(false)}</h3>
       <p class="font-body-sm text-body-sm text-on-surface-variant">How well the molecule is predicted to fit the pocket. More negative is a better predicted fit. This is a computed estimate, not a measurement.</p>
       <div class="mt-space-xs space-y-space-2xs font-mono-data text-mono-data">
-        ${d.score !== undefined ? kv(esc(d.engine === "vina" ? "AutoDock Vina score" : d.engine === "hpsee" ? "FlexX score (on HPSee)" : "FlexX score"), `${d.score} ${esc(d.score_unit)}`, "Different programs use different scales") + kv("Poses found", d.n_poses) : '<div class="text-outline">Not available.</div>'}</div></section>
+        ${d.score !== undefined ? kv(esc(d.engine === "vina" ? "AutoDock Vina score" : d.engine === "hpsee" ? "HPSee docking score" : "FlexX score"), `${d.score} ${esc(d.score_unit)}`, "Different programs use different scales") + kv("Poses found", d.n_poses) : '<div class="text-outline">Not available.</div>'}</div></section>
     ${h.cumulative_kj_mol !== undefined ? `<section><h3 class="font-headline-sm text-headline-sm">HYDE re-score ${real(false)}</h3>
       <p class="font-body-sm text-body-sm text-on-surface-variant">A physics-based estimate that includes the cost of stripping water from the molecule and the pocket. The affinity range is HYDE's own uncertainty band: the real value is predicted to lie between the two ends.${h.cumulative_kj_mol === null ? " Scored on HPSee, which does not report per-atom HYDE scores, so the total score and its parts are not available. The affinity range is." : ""}</p>
       <div class="mt-space-xs space-y-space-2xs font-mono-data text-mono-data">
