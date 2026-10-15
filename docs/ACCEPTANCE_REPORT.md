@@ -18,6 +18,7 @@ Tools: AutoDock Vina 1.2.7, BioSolveIT FlexX 6.5.3, HYDE 2.5.3 and FastGrow 1.6.
 | Persistence / recovery | DB-backed state; real SIGKILL: finished batches 1–2 not repeated, interrupted 3–4 re-run (attempt 2), orphan tool processes removed, campaign COMPLETE |
 | Natural molecule-level failure | MDP-F5F7-0027: "3D conformer generation failed" → recorded, campaign continued, shown under *Could not be processed* |
 | SDF output | opens in RDKit, 3D poses (HYDE-optimised pose preferred), separate labelled tags, placeholders suffixed `_MOCKED` |
+| **HPSee (replaces local FlexX)** | 2026-10-15, HPSee 2.4.0, licence to 2026-11-15: real campaign via the API: demo library 8 molecules → FlexX on HPSee (one workflow, ~80 s, 8/8 docked) → HYDE on HPSee (~30 s, 8/8) → SA → ADMET → 3 ranked candidates. `tests/integration/test_real_hpsee.py` and `scripts/verify_tools.py` pass against the live server. Found from real output: per-task progress is 0 → 100 %, and HPSee's HYDE has no per-atom scores (ranking for HPSee campaigns uses HYDE's affinity lower bound) |
 | Container | image builds; non-root, read-only filesystem, `cap_drop ALL`; Vina, ADMET-AI and HYDE (with licence mounted) work inside it |
 
 ## 2. Tested only with fixtures or fakes
@@ -30,6 +31,7 @@ Tools: AutoDock Vina 1.2.7, BioSolveIT FlexX 6.5.3, HYDE 2.5.3 and FastGrow 1.6.
 
 | Item | Why | What unblocks it |
 |---|---|---|
+| **HPSee Chemical Space Docking** | Built and tested against a fake HPSee (anchoring → review → confirm → extension rounds → products; cancel, resume, re-attach, HPSee-side retry). Never run for real | SeeSAR-exported `.flexx` + `.hydescorer` files and a `.space` file uploaded to HPSee |
 | **Koffee** (affinity, kinetics) | Deferred by decision. Stages stay **placeholders**, labelled everywhere, excluded from filtering/ranking. | Koffee package/API + docs |
 | `HYDE_SCORER.html` (company extractor) | **Used**: component definitions ported; totals verified against the extractor's own JavaScript on real hydescorer output | — |
 | FastGrow analogue quality | Integration works; scientific value not assessed (generated molecules unsynthesised, novelty unchecked; BioSolveIT's 120k library download is login-gated, so a self-derived fragment DB is used) | Download the 120k library and set `FASTGROW_DB` |

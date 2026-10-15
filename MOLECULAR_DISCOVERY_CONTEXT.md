@@ -12,6 +12,12 @@
 
 ---
 
+> **Update 2026-10-15 (BioSolveIT HPSee):** the docking engines are now AutoDock Vina (local) and
+> BioSolveIT **HPSee** (remote; replaces local FlexX). HPSee runs FlexX + HYDE for library campaigns and
+> **Chemical Space Docking** (anchoring → user review + explicit confirmation → extension). See `docs/HPSEE.md`
+> for what was verified against a licensed HPSee 2.4.0 and what (C-S-D output) was not. The stage/data
+> descriptions further below predate this and the later campaign engine; README.md and docs/ are current.
+>
 > **Update 2026-10-06 (deployment hardening):** the application is now containerised and
 > PostgreSQL-backed. SQLite remains only as a dev/test fallback. Schema is managed by
 > Alembic; configuration is centralised in `backend/config.py`; artifact paths are stored

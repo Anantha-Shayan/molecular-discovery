@@ -28,6 +28,19 @@ best pose per molecule. FlexX and HYDE rank the same molecules differently (e.g.
 why the ranking measure is an explicit choice. Speed on the 7RPZ pocket (a large, open site): about 13 s/molecule wall time
 at 2 batches × 4 threads, much slower than the vendor's "< 1 s/ligand" for small pockets.
 
+**Docking and Chemical Space Docking on HPSee (replaces local FlexX).** HPSee runs the same FlexX and HYDE
+engines server-side (details and evidence: `docs/HPSEE.md`). Library mode sends each batch's RDKit 3D start
+geometries plus protein and reference ligand to `Dockings/StandardInput`. HPSee returns 10 poses per molecule
+(`<name>_NN`, `BIOSOLVEIT.DOCKING_SCORE`). All poses go to HPSee's HYDE scoring, which picks the best pose per
+molecule. HPSee's HYDE output has **no per-atom scores**, so the cumulative HYDE score above cannot be formed.
+HPSee campaigns rank by HYDE's **estimated affinity lower bound** instead (a vendor output; the range spans about
+two orders of magnitude, so treat it as an order-of-magnitude estimate). Chemical Space Docking never
+enumerates the space. Anchoring docks and scores the building blocks (synthons with open attachment points,
+`BIOSOLVEIT.NUMBER_OF_LINK_ATOMS > 0`). A person chooses which anchors to grow. Extension builds and docks
+products of the space from those anchors only, so the result depends on that choice. It is a guided
+search, not an exhaustive one. Anchor scores describe a fragment's fit, not a drug's. Products are make-on-demand
+members of the space, not catalogue stock. Their 3D pose and protein come from the SeeSAR definition files.
+
 **Analogue generation (FastGrow, optional).** After ranking, up to 3 top candidates are used as parents. For each, the
 best available pose (HYDE-optimised, else docking) gets hydrogens; up to 2 *exit vectors* are chosen automatically:
 hydrogens with at least 2.8 Å of free space and at least 8 protein atoms within 6 Å (so the new group has room and context),
@@ -74,7 +87,8 @@ of element restriction (C/H/N/O/F/P/S/Cl/Br/I), largest-fragment selection, neut
 (in-stock/on-demand/agent/boutique), pH state and net charge — those need live ZINC catalogue/vendor metadata that
 the flat "Deep Docking" SMILES archive does not carry at all, so there is no honest way to filter on them here.
 
-**Ranking.** One named measure (default HYDE cumulative score), ties by SA; mocked values never participate.
+**Ranking.** One named measure (default HYDE cumulative score; HYDE estimated affinity lower bound for HPSee
+campaigns), ties by SA; mocked values never participate.
 
 **GPU.** See `docs/GPU.md`: only ADMET-AI can use a GPU; Vina, FlexX, HYDE, FastGrow and RDKit are CPU programs. On this machine the NVIDIA driver is not installed, so everything runs on CPU.
 RTX 4050 is present, but no NVIDIA driver is installed on the development machine, and CPU inference is fast enough.
