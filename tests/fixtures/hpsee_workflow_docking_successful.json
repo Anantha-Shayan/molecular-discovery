@@ -1,0 +1,78 @@
+{
+ "workflowId": "24097323-cead-4d38-a7c5-b3c90d452198",
+ "result": {
+  "libraryId": "68d5bffb-490b-4ffe-b117-bf2105182d59",
+  "librarySize": 20
+ },
+ "status": 4,
+ "statusDescription": "Execution was successful",
+ "taskInfos": [
+  {
+   "type": "Docking",
+   "result": {
+    "libraryId": "00000000-0000-0000-0000-000000000000",
+    "librarySize": 20
+   },
+   "status": 4,
+   "taskId": "d6901a93-ec0a-424e-a44c-fb4821e34245",
+   "statusDescription": "Execution was successful",
+   "progress": 100,
+   "createdAt": "2026-10-15T13:53:42.321827Z",
+   "createdBy": "admin",
+   "startedAt": "2026-10-15T13:53:50.560603Z",
+   "finishedAt": "2026-10-15T13:55:02.498157Z"
+  },
+  {
+   "type": "Annotation",
+   "result": {
+    "libraryId": "68d5bffb-490b-4ffe-b117-bf2105182d59",
+    "librarySize": 20
+   },
+   "status": 4,
+   "taskId": "3642ac08-5e1b-4f63-bf32-f6f65f2cb5d2",
+   "statusDescription": "Execution was successful",
+   "progress": 100,
+   "createdAt": "2026-10-15T13:53:42.479677Z",
+   "createdBy": "admin",
+   "startedAt": "2026-10-15T13:55:04.490034Z",
+   "finishedAt": "2026-10-15T13:55:05.590593Z"
+  }
+ ],
+ "description": "MDP integration probe (safe to delete)",
+ "createdAt": "2026-10-15T13:53:42.6138Z",
+ "createdBy": "admin",
+ "startedAt": "2026-10-15T13:53:50.560603Z",
+ "finishedAt": "2026-10-15T13:55:05.590593Z",
+ "links": [
+  {
+   "href": "/api/v1/Workflows/24097323-cead-4d38-a7c5-b3c90d452198",
+   "rel": "this",
+   "method": "GET"
+  },
+  {
+   "href": "/api/v1/Workflows/24097323-cead-4d38-a7c5-b3c90d452198",
+   "rel": "delete",
+   "method": "DELETE"
+  },
+  {
+   "href": "/api/v1/MoleculeLibraries/68d5bffb-490b-4ffe-b117-bf2105182d59/Download",
+   "rel": "get_results",
+   "method": "GET"
+  },
+  {
+   "href": "/api/v1/Workflows/24097323-cead-4d38-a7c5-b3c90d452198/Errors/Retry",
+   "rel": "retry",
+   "method": "POST"
+  },
+  {
+   "href": "/api/v1/Workflows/24097323-cead-4d38-a7c5-b3c90d452198/Errors",
+   "rel": "get_errors",
+   "method": "GET"
+  },
+  {
+   "href": "/api/v1/Workflows/24097323-cead-4d38-a7c5-b3c90d452198/Errors/DownloadInput",
+   "rel": "get_failed_input",
+   "method": "GET"
+  }
+ ]
+}

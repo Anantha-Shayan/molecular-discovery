@@ -290,14 +290,17 @@ def test_a_batch_cannot_be_claimed_twice(client, fake):
 
 def test_creation_is_rejected_for_unavailable_tools_and_bad_sites(client, monkeypatch):
     real = registry.tool_statuses()
-    off = {k: dataclasses.replace(v, available=(k != "flexx"), reason="Executable not found." if k == "flexx" else None)
+    off = {k: dataclasses.replace(v, available=(k != "vina"), reason="Executable not found." if k == "vina" else None)
            for k, v in real.items()}
     monkeypatch.setattr(registry, "tool_statuses", lambda refresh=False: off)
     tid = client.post("/api/targets/demo").json()["target_id"]
     ref = _site_ref(client, tid)
     base = {"target_id": tid, "site": {"mode": "ligand", "reference": ref}, "library_source": "demo"}
-    r = client.post("/api/jobs", json={**base, "engine": "flexx"})
+    r = client.post("/api/jobs", json={**base, "engine": "vina"})
     assert r.status_code == 422 and "not available" in r.json()["detail"]
+    r = client.post("/api/jobs", json={**base, "engine": "flexx"})
+    assert r.status_code == 422 and "Unknown docking engine" in r.json()["detail"], "local FlexX replaced by HPSee"
+    monkeypatch.setattr(registry, "tool_statuses", lambda refresh=False: real)
     r = client.post("/api/jobs", json={**base, "site": {"mode": "ligand", "reference": "XXX:A:1"}})
     assert r.status_code == 422
     r = client.post("/api/jobs", json={**base, "site": {"mode": "manual", "center": [900, 900, 900], "size": [20, 20, 20]}})

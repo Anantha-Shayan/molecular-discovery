@@ -104,6 +104,14 @@ class CreateJobRequest(BaseModel):
     grow_parents: int = 3
     grow_per_parent: int = 20
     batch_size: int | None = None
+    # BioSolveIT HPSee (engine="hpsee")
+    hpsee_mode: str = "library"               # library | chemical_space
+    hpsee_space_id: str | None = None
+    hpsee_docking_definition: str | None = None   # id returned by POST /api/hpsee/definitions (kind=flexx)
+    hpsee_scoring_definition: str | None = None   # id returned by POST /api/hpsee/definitions (kind=hydescorer)
+    hpsee_anchor_filters: str = Field(default="", max_length=2000)
+    hpsee_extension_filters: str = Field(default="", max_length=2000)
+    hpsee_max_products: int = 500
 
 
 class RetryRequest(BaseModel):

@@ -28,11 +28,18 @@ def stage_payloads(session: Session, job_id: str, molecule_ids: list[str] | None
     return out
 
 
+def hyde_measure(p: dict) -> str:
+    """HPSee's HYDE scoring writes no per-atom scores, so its campaigns rank by HYDE's estimated affinity."""
+    return "affinity" if p.get("engine") == "hpsee" else "cumulative"
+
+
 def rank_key(p: dict, by: str):
     def key(item):
         mol, pay = item
         sa = pay.get("sa", {}).get("sa_score", 99.0)
-        if by == "hyde":
+        if by == "hyde" and hyde_measure(p) == "affinity":
+            primary = pay.get("hyde", {}).get("affinity_lower_nm")
+        elif by == "hyde":
             primary = pay.get("hyde", {}).get("cumulative_kj_mol")
         elif by == "docking":
             primary = pay.get("docking", {}).get("score")
