@@ -19,7 +19,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -240,3 +240,65 @@ class Artifact(Base):
     # Relative to DATA_DIR (see backend/storage.py) — never an absolute host path.
     storage_path: Mapped[str] = mapped_column(String)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now)
+
+
+class HPSeeRun(Base):
+    """One workflow submitted to BioSolveIT HPSee, and everything we learned about it.
+
+    The row is written BEFORE the submission (status `submitting`) and the HPSee
+    workflow id is stored as soon as HPSee returns it, so an application restart
+    re-attaches to the remote workflow instead of submitting it a second time.
+    `tasks` is HPSee's own per-task status/progress, copied verbatim at each poll.
+    """
+
+    __tablename__ = "hpsee_runs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), index=True)
+    batch_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)  # library docking only
+    kind: Mapped[str] = mapped_column(String)            # docking | anchoring | extension
+    round: Mapped[int] = mapped_column(Integer, default=0)  # 0 = anchoring, 1.. = extension rounds
+    csd_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    workflow_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    # submitting | running | succeeded | failed | cancelled | awaiting_review | reviewed
+    status: Mapped[str] = mapped_column(String, default="submitting")
+    hpsee_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hpsee_status_text: Mapped[str | None] = mapped_column(String, nullable=True)
+    tasks: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    result_library_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    result_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fetched_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_category: Mapped[str | None] = mapped_column(String, nullable=True)
+    retryable: Mapped[bool] = mapped_column(Boolean, default=True)
+    selected_entry_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)  # input of an extension round
+    decision: Mapped[str | None] = mapped_column(String, nullable=True)            # extend | finish (after review)
+    summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now)
+    submitted_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
+class HPSeeEntry(Base):
+    """One result entry (docked synthon or product) downloaded from an HPSee result library.
+
+    `entry_id` is HPSee's own id; it is what an extension round must be given,
+    so the review screen can only ever select entries HPSee really returned.
+    """
+
+    __tablename__ = "hpsee_entries"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    run_id: Mapped[str] = mapped_column(String, ForeignKey("hpsee_runs.id"), index=True)
+    job_id: Mapped[str] = mapped_column(String, ForeignKey("jobs.id"), index=True)
+    entry_id: Mapped[int] = mapped_column(BigInteger)
+    rank: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str | None] = mapped_column(String, nullable=True)
+    smiles: Mapped[str | None] = mapped_column(Text, nullable=True)
+    n_linkers: Mapped[int] = mapped_column(Integer, default=0)
+    docking_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hyde_kj_mol: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hyde: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pose_path: Mapped[str | None] = mapped_column(String, nullable=True)  # relative to the run directory
