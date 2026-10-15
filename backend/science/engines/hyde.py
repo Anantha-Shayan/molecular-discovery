@@ -135,8 +135,12 @@ def parse_hyde_output(text: str) -> dict[str, HydeScore]:
     return best
 
 
-def _rank(s: HydeScore) -> float:
-    return s.cumulative_kj_mol if s.cumulative_kj_mol is not None else float("inf")
+def _rank(s: HydeScore) -> tuple[float, float]:
+    """Best pose: lowest cumulative score. HPSee's scoring writes no per-atom scores, so its poses
+    (cumulative = None) are compared by the vendor's estimated affinity lower bound instead."""
+    if s.cumulative_kj_mol is not None:
+        return (s.cumulative_kj_mol, 0.0)
+    return (float("inf"), s.affinity_lower_nm if s.affinity_lower_nm is not None else float("inf"))
 
 
 def clash_label(v: int | None) -> str | None:
