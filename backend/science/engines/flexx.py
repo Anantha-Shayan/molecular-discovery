@@ -13,6 +13,7 @@ Requirements from the documentation, enforced here:
   * the score is written to the SD tag BIOSOLVEIT.DOCKING_SCORE for each pose.
 
 STATUS: executed against the real FlexX 6.5.3 binary (tests/integration, `-m real`).
+LEGACY: replaced by BioSolveIT HPSee for new campaigns; kept so stored FlexX campaigns can resume.
 The output naming (`<name>_<pose>`) was learned from that run, not from the manual.
 """
 from __future__ import annotations
@@ -20,11 +21,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from rdkit import Chem
-
 from ...tools import proc, registry
 from .. import sdf as sdflib
-from .common import DockInput, DockResult, DockSettings, LigandPrepError, embed_3d, mol_to_sdf
+from .common import DockInput, DockResult, DockSettings, write_3d_library
 
 TAG_SCORE = "BIOSOLVEIT.DOCKING_SCORE"
 
@@ -93,18 +92,9 @@ class FlexxEngine:
         workdir.mkdir(parents=True, exist_ok=True)
         results: dict[str, DockResult] = {}
         lib = workdir / "ligands3d.sdf"
-        name_to_id: dict[str, str] = {}
-        w = Chem.SDWriter(str(lib))
-        for it in items:
-            try:
-                mol = embed_3d(it.smiles, cfg.seed)
-            except LigandPrepError as exc:
-                results[it.molecule_id] = DockResult(it.molecule_id, False, error=str(exc))
-                continue
-            mol.SetProp("_Name", it.display_id)
-            w.write(mol)
-            name_to_id[it.display_id] = it.molecule_id
-        w.close()
+        name_to_id, failed = write_3d_library(items, lib, cfg.seed)
+        for mid, err in failed.items():
+            results[mid] = DockResult(mid, False, error=err)
         if name_to_id:
             out = workdir / "flexx_poses.sdf"
             out.unlink(missing_ok=True)
