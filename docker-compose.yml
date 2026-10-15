@@ -68,6 +68,16 @@ services:
       CHEMAIRS_MATERIAL_SOURCE: ${CHEMAIRS_MATERIAL_SOURCE:-0}
       CHEMAIRS_POLL_INTERVAL_SECONDS: ${CHEMAIRS_POLL_INTERVAL_SECONDS:-3}
       CHEMAIRS_POLL_TIMEOUT_SECONDS: ${CHEMAIRS_POLL_TIMEOUT_SECONDS:-300}
+      # BioSolveIT HPSee (remote docking + Chemical Space Docking; optional). Unset -> HPSee is shown as
+      # "not configured" and only Vina is offered. HPSee on THIS host (its own compose stack, port 8080):
+      # HPSEE_URL=http://host.docker.internal:8080 (resolved by extra_hosts below). See docs/HPSEE.md.
+      HPSEE_URL: ${HPSEE_URL:-}
+      HPSEE_USERNAME: ${HPSEE_USERNAME:-}
+      HPSEE_PASSWORD: ${HPSEE_PASSWORD:-}
+      HPSEE_VERIFY_TLS: ${HPSEE_VERIFY_TLS:-true}
+      HPSEE_POLL_INTERVAL_SECONDS: ${HPSEE_POLL_INTERVAL_SECONDS:-10}
+      HPSEE_WORKFLOW_TIMEOUT_SECONDS: ${HPSEE_WORKFLOW_TIMEOUT_SECONDS:-259200}
+      HPSEE_MAX_FETCH_ENTRIES: ${HPSEE_MAX_FETCH_ENTRIES:-5000}
       # Scientific tools. Vina is baked into the image. BioSolveIT tools are only present where the
       # environment override mounts them (never in the image); absent tools are reported as unavailable.
       VINA_BIN: /usr/local/bin/vina
@@ -89,6 +99,9 @@ services:
       - ${LICENSE_HOST_DIR:-${HOME}/.config/biosolveit}:/etc/biosolveit:${MOUNT_OPTS:-ro,z}
     networks:
       - molecular-discovery-network
+    # Lets the container reach services published on the Docker host (e.g. HPSee's port 8080).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/ready' % os.environ.get('PORT', '8008'), timeout=3)"]
       interval: 15s
