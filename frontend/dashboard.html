@@ -44,6 +44,40 @@
       <div id="stages" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-space-sm"></div>
     </section>
 
+    <!-- HPSee anchor review (Chemical Space Docking) -->
+    <section id="review-section" hidden class="bg-surface-container-lowest rounded p-space-md shadow-sm border-l-2 border-primary">
+      <div class="flex flex-wrap items-start justify-between gap-space-md">
+        <div class="max-w-4xl">
+          <span class="font-label-caps text-label-caps text-primary uppercase tracking-wider">Your decision is needed</span>
+          <h2 id="rv-title" class="font-headline-md text-headline-md">Review the anchors</h2>
+          <p id="rv-intro" class="font-body-sm text-body-sm text-on-surface-variant"></p>
+        </div>
+        <div id="rv-actions" class="flex flex-wrap gap-space-sm items-center"></div>
+      </div>
+      <div id="rv-confirm" hidden class="mt-space-md p-space-md rounded bg-warning-container text-warning space-y-space-sm"></div>
+      <div id="rv-error" hidden class="mt-space-sm"></div>
+      <div class="mt-space-sm overflow-x-auto"><table class="w-full text-left font-mono-data text-mono-data">
+        <thead><tr class="font-label-caps text-label-caps text-outline uppercase bg-surface-container-low/60">
+          <th class="p-space-sm w-8"><input id="rv-page-all" type="checkbox" title="Select every extendable entry on this page"></th>
+          <th class="p-space-sm">#</th><th class="p-space-sm">Structure</th><th class="p-space-sm">Entry</th>
+          <th class="p-space-sm text-right" title="Open attachment points (where the next building block is added)">Open points</th>
+          <th class="p-space-sm text-right" title="FlexX docking score from HPSee; more negative is better">Docking score</th>
+          <th class="p-space-sm text-right" title="HYDE's estimated affinity range from HPSee; smaller is better">HYDE affinity</th>
+          <th class="p-space-sm text-right">Ligand eff.</th><th class="p-space-sm">Clash</th><th class="p-space-sm"></th></tr></thead>
+        <tbody id="rv-rows" class="divide-y divide-surface-container-high/60"></tbody></table></div>
+      <div id="rv-pager" class="mt-space-sm flex items-center gap-space-sm font-mono-sm text-mono-sm text-outline"></div>
+    </section>
+
+    <!-- HPSee workflows -->
+    <section id="hpsee-section" hidden class="bg-surface-container-lowest rounded p-space-md shadow-sm">
+      <h2 class="font-headline-md text-headline-md">HPSee workflows</h2>
+      <p class="font-body-sm text-body-sm text-on-surface-variant max-w-4xl">
+        Work sent to the BioSolveIT HPSee server, as HPSee reports it. Each workflow is made of tasks (for example Docking, then Annotation).
+        HPSee gives each task's progress when it finishes, so a bar may stay at 0% and then jump to 100%. That is HPSee's own figure, not an estimate.
+      </p>
+      <div id="hpsee-runs" class="mt-space-sm space-y-space-sm"></div>
+    </section>
+
     <!-- Batch inspector -->
     <section id="batch-section" hidden class="bg-surface-container-lowest rounded p-space-md shadow-sm">
       <div class="flex items-start justify-between gap-space-md flex-wrap">
