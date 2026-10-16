@@ -20,6 +20,11 @@ transition, so a refresh, an API restart or a crash loses nothing:
     left `failed` for the user to inspect and retry selectively.
 
 One campaign executes at a time (docking saturates the CPU); others queue.
+
+A Chemical Space Docking campaign (engine=hpsee, hpsee_mode=chemical_space)
+can also PAUSE in status AWAITING_REVIEW: the runner stops working on it until
+a person confirms which anchors to extend (see campaign/hpsee_flow.py). A
+paused campaign holds no CPU and does not block the queue.
 """
 from __future__ import annotations
 
@@ -50,6 +55,7 @@ from . import results
 log = get_logger("campaign")
 
 TERMINAL = ("COMPLETE", "FAILED", "CANCELLED")
+WAITING = "AWAITING_REVIEW"
 ACTIVE_BATCH = ("pending", "retrying")
 RETRY_BACKOFF_SECONDS = 2.0  # multiplied by the attempt number, capped at 10 s
 
@@ -68,9 +74,18 @@ def event(session: Session, job_id: str, stage: str, status: str, detail: str | 
 
 def create_campaign(session: Session, target: models.Target, params: dict, label: str | None) -> models.Job:
     p = P.resolve(params)
-    if p["engine"] == "flexx" and not (p.get("site") or {}).get("reference"):
-        raise P.ParamError("FlexX needs a reference ligand to define the binding site.")
-    if p["enable_hyde"] and not (p.get("site") or {}).get("reference"):
+    if p["engine"] not in P.ENGINES:
+        raise P.ParamError(f"engine must be one of {P.ENGINES}")
+    has_ref = bool((p.get("site") or {}).get("reference"))
+    if p["engine"] == "hpsee" and not P.is_csd(p) and not has_ref:
+        raise P.ParamError("HPSee docking needs a reference ligand to define the binding site.")
+    if P.is_csd(p):
+        from . import hpsee_flow
+        if not p.get("hpsee_space_id"):
+            raise P.ParamError("Choose the HPSee Chemical Space to search.")
+        hpsee_flow.definition_path(p.get("hpsee_docking_definition"), "flexx")
+        hpsee_flow.definition_path(p.get("hpsee_scoring_definition"), "hydescorer")
+    if p["enable_hyde"] and not has_ref:
         raise P.ParamError(
             "HYDE scoring needs a reference ligand; define the site from a co-crystallised ligand "
             "or turn HYDE scoring off."
@@ -92,7 +107,9 @@ def create_campaign(session: Session, target: models.Target, params: dict, label
             status="pending" if enabled else "skipped",
             detail=None if enabled else "Turned off in the campaign settings",
         ))
-    event(session, job.id, "campaign", "QUEUED", f"engine={p['engine']} library={p['library_source']}:{p['library_count']}")
+    event(session, job.id, "campaign", "QUEUED",
+          f"engine={p['engine']} chemical_space={p['hpsee_space_name'] or p['hpsee_space_id']}" if P.is_csd(p)
+          else f"engine={p['engine']} library={p['library_source']}:{p['library_count']}")
     return job
 
 
@@ -236,9 +253,22 @@ def run_campaign(job_id: str, cancel: threading.Event, shutdown: threading.Event
                 ok = _stage_rank(job_id)
             elif stage == "grow":
                 ok = _stage_grow(job_id, cancel)
+            elif stage == "csd_anchoring":
+                from . import hpsee_flow
+                ok = hpsee_flow.stage_anchoring(job_id, cancel, shutdown)
+            elif stage == "csd_extension":
+                from . import hpsee_flow
+                ok = hpsee_flow.stage_extension(job_id, cancel, shutdown)
             else:
                 ok = _stage_batched(job_id, stage, cancel, shutdown)
+        except proc.ToolCancelled:
+            if shutdown.is_set():
+                return  # remote HPSee work keeps running; recovery re-attaches to it
+            ok = "cancelled"
         except Exception as exc:  # noqa: BLE001 - stage-level failure
+            from .hpsee_flow import Paused
+            if isinstance(exc, Paused):
+                return _pause(job_id, stage)
             log.error("stage %s failed: %s", stage, traceback.format_exc(), extra={"job_id": job_id, "stage": stage})
             reason = _safe_error(exc, _job_dir(job_id))
             _set_stage(job_id, stage, "failed", detail=reason, finish=True)
@@ -252,6 +282,13 @@ def run_campaign(job_id: str, cancel: threading.Event, shutdown: threading.Event
     _finish(job_id, "COMPLETE", None)
 
 
+def _pause(job_id: str, stage: str) -> None:
+    with get_session() as s:
+        job = s.get(models.Job, job_id)
+        job.status, job.current_stage = WAITING, stage
+        event(s, job_id, "campaign", WAITING, "Waiting for a person to review HPSee results and confirm the next step")
+
+
 def _finish(job_id: str, status: str, reason: str | None) -> None:
     with get_session() as s:
         job = s.get(models.Job, job_id)
@@ -261,7 +298,7 @@ def _finish(job_id: str, status: str, reason: str | None) -> None:
         job.current_stage = job.current_stage if status != "COMPLETE" else None
         if status == "CANCELLED":
             for st in s.execute(select(models.JobStage).where(models.JobStage.job_id == job_id)).scalars():
-                if st.status in ("running", "pending"):
+                if st.status in ("running", "pending", "awaiting_review"):
                     st.status = "cancelled"
             s.execute(update(models.Batch).where(
                 models.Batch.job_id == job_id, models.Batch.status.in_(("pending", "retrying", "running"))
@@ -320,13 +357,19 @@ def _stage_prepare(job_id: str) -> str:
         recep.write_reference_ligand(pdb, prep / "ref_ligand.sdf", ref)
         notes.append(f"reference ligand {ref.het_name} ({ref.heavy_atoms} heavy atoms)")
     tool = None
+    if P.is_csd(p):
+        from . import hpsee_flow
+        flexx_def, hyde_def = hpsee_flow._csd_files(job_id)
+        flexx_def.write_bytes(hpsee_flow.definition_path(p["hpsee_docking_definition"], "flexx").read_bytes())
+        hyde_def.write_bytes(hpsee_flow.definition_path(p["hpsee_scoring_definition"], "hydescorer").read_bytes())
+        notes.append("SeeSAR docking + scoring definitions copied with the campaign (they define HPSee's protein and pocket)")
     if p["engine"] == "vina":
         recep.prepare_vina_receptor(prep / "protein.pdb", prep, site["center"], site["size"])
         notes.append("Vina receptor: pH 7.4 hydrogens, heteroatoms removed, rigid")
         tool = "PDBFixer + Meeko"
     with get_session() as s:
         for f in prep.glob("*"):
-            if f.name != "input.pdb" and f.suffix in (".pdb", ".sdf", ".pdbqt"):
+            if f.name != "input.pdb" and f.suffix in (".pdb", ".sdf", ".pdbqt", ".flexx", ".hydescorer"):
                 _artifact(s, job_id, "prepare", f)
     _set_stage(job_id, "prepare", "succeeded", detail="; ".join(notes), finish=True, tool=tool, counts=(1, 1, 0))
     return "ok"
@@ -527,6 +570,10 @@ def _stage_batched(job_id: str, stage: str, cancel: threading.Event, shutdown: t
             if not ids:
                 empty = True
             size = p["batch_size"]
+            if _remote(p, stage):
+                # One HPSee workflow per batch: HPSee parallelises internally, and FlexX returns up to
+                # 10 poses per molecule, so a batch is bounded by how many entries we may download.
+                size = max(1, settings.hpsee_max_fetch_entries // 10)
             for i in range(0, len(ids), size):
                 s.add(models.Batch(job_id=job_id, stage=stage, index=i // size + 1, molecule_ids=ids[i:i + size]))
             event(s, job_id, stage, "PLANNED", f"{len(ids)} molecules in {-(-len(ids) // size)} batch(es) of up to {size}")
@@ -537,7 +584,7 @@ def _stage_batched(job_id: str, stage: str, cancel: threading.Event, shutdown: t
     tool = _tool_label(p, stage)
     _set_stage(job_id, stage, "running", started=True, tool=tool)
 
-    parallel = 1 if stage == "admet" else settings.max_parallel_batches
+    parallel = 1 if stage == "admet" or _remote(p, stage) else settings.max_parallel_batches
     while True:
         with get_session() as s:
             todo = list(s.execute(select(models.Batch.id).where(
@@ -584,8 +631,22 @@ def _write_hyde_extractor_sdf(job_id: str) -> None:
         _artifact(s, job_id, "hyde", out, "sdf_output")
 
 
+def _remote(p: dict, stage: str) -> bool:
+    """Is this batched stage executed by HPSee rather than on this machine?"""
+    return p.get("engine") == "hpsee" and stage in ("docking", "hyde")
+
+
+def _batch_timeout(p: dict, stage: str) -> int:
+    # HPSee enforces its own workflow deadline (hpsee_flow.wait); the batch watchdog sits just above it.
+    return settings.hpsee_workflow_timeout_seconds + 300 if _remote(p, stage) else settings.batch_timeout_seconds
+
+
 def _tool_label(p: dict, stage: str) -> str | None:
     from ..tools import registry
+    if _remote(p, stage):
+        from ..science.engines import hpsee as H
+        v = H.status().version or ""
+        return f"BioSolveIT {'FlexX' if stage == 'docking' else 'HYDE'} on HPSee {v}".strip()
     if stage == "docking":
         st = registry.get(p["engine"])
         return f"{st.name} {st.version or ''}".strip()
@@ -641,13 +702,14 @@ def _execute_batch(job_id: str, stage: str, batch_id: str, p: dict, parallel: in
         s.get(models.Batch, batch_id).log_path = storage.to_stored(log_path)
 
     cpu = max(1, settings.cpu_budget // max(1, parallel))
-    ctx = ex.Ctx(job_id, p, job_dir, tctx, prior, cpu)
+    ctx = ex.Ctx(job_id, p, job_dir, tctx, prior, cpu, batch_id=batch_id, shutdown=shutdown)
+    timeout_s = _batch_timeout(p, stage)
     local_cancel = threading.Event()
     timed_out = threading.Event()
     done = threading.Event()
 
     def watch():
-        deadline = time.monotonic() + settings.batch_timeout_seconds
+        deadline = time.monotonic() + timeout_s
         while not done.wait(0.5):
             if job_cancel.is_set() or shutdown.is_set():
                 local_cancel.set()
@@ -665,8 +727,7 @@ def _execute_batch(job_id: str, stage: str, batch_id: str, p: dict, parallel: in
 
     started = time.monotonic()
     try:
-        outcomes = ex.call(stage, ctx, mols, batch_dir, log_path, local_cancel, progress,
-                           float(settings.batch_timeout_seconds))
+        outcomes = ex.call(stage, ctx, mols, batch_dir, log_path, local_cancel, progress, float(timeout_s))
         _persist_outcomes(job_id, stage, batch_id, mol_ids, outcomes, time.monotonic() - started)
     except proc.ToolCancelled:
         if shutdown.is_set():  # application stopping: resume this batch on next start
@@ -674,7 +735,7 @@ def _execute_batch(job_id: str, stage: str, batch_id: str, p: dict, parallel: in
                        time.monotonic() - started, attempt, job_id, stage, index)
             return
         _end_batch(batch_id, "failed" if timed_out.is_set() else "cancelled",
-                   f"Timed out after {settings.batch_timeout_seconds}s" if timed_out.is_set() else "Cancelled",
+                   f"Timed out after {timeout_s}s" if timed_out.is_set() else "Cancelled",
                    time.monotonic() - started, attempt, job_id, stage, index)
     except proc.ToolTimeout as exc:
         _end_batch(batch_id, "retrying" if attempt < settings.max_batch_attempts else "failed",
@@ -776,13 +837,17 @@ class ControlError(ValueError):
 def request_cancel(session: Session, job: models.Job) -> None:
     if job.status in TERMINAL:
         raise ControlError("This campaign has already finished.")
-    if job.status == "QUEUED":
+    if job.status in ("QUEUED", WAITING):
         job.status = "CANCELLED"
         job.finished_at = _now()
         for st in session.execute(select(models.JobStage).where(models.JobStage.job_id == job.id)).scalars():
             if st.status == "pending":
                 st.status = "cancelled"
-        event(session, job.id, "campaign", "CANCELLED", "Cancelled before starting")
+        for st in session.execute(select(models.JobStage).where(
+                models.JobStage.job_id == job.id, models.JobStage.status == "awaiting_review")).scalars():
+            st.status = "cancelled"
+        event(session, job.id, "campaign", "CANCELLED",
+              "Cancelled while waiting for review" if job.current_stage == "csd_extension" else "Cancelled before starting")
     else:
         job.cancel_requested = True
         event(session, job.id, "campaign", "CANCEL_REQUESTED")
@@ -808,7 +873,7 @@ def retry_batches(session: Session, job: models.Job, batch_ids: list[str] | None
     Downstream stages are reset, since their inputs change; stages upstream
     and unrelated batches are untouched. Returns the number of batches queued.
     """
-    if job.status == "RUNNING" or job.status == "QUEUED":
+    if job.status in ("RUNNING", "QUEUED", WAITING):
         raise ControlError("Wait for the campaign to stop (or cancel it) before retrying.")
     order = {s.stage: s.position for s in session.execute(
         select(models.JobStage).where(models.JobStage.job_id == job.id)).scalars()}

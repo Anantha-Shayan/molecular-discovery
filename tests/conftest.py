@@ -42,7 +42,8 @@ os.environ.pop("CORS_ORIGINS", None)
 # Tool locations are machine specific. Let `pytest -m real` find the local tools
 # through the same git-ignored file the dev server uses. Only tool keys are read;
 # DATA_DIR/DATABASE_URL stay isolated above.
-_TOOL_KEYS = {"TOOLS_DIR", "VINA_BIN", "FLEXX_BIN", "HYDESCORER_BIN", "FASTGROW_BIN", "BIOSOLVE_LICENSE_FILE"}
+_TOOL_KEYS = {"TOOLS_DIR", "VINA_BIN", "FLEXX_BIN", "HYDESCORER_BIN", "FASTGROW_BIN", "BIOSOLVE_LICENSE_FILE",
+              "HPSEE_URL", "HPSEE_USERNAME", "HPSEE_PASSWORD", "HPSEE_VERIFY_TLS"}
 _local = os.path.join(REPO_ROOT, ".env.local")
 if os.path.exists(_local):
     for _line in open(_local):

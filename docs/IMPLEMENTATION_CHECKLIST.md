@@ -21,6 +21,8 @@ Legend: ✅ done and evidenced · 🟡 done, not validated against the real vend
 ## Phase 3 — scientific integrations
 - ✅ Vina · ✅ HYDE · ✅ RDKit SA · ✅ ADMET-AI (+ calibrated alert rule)
 - ✅ FlexX adapter (real binary; parser corrected from real output) · ✅ ZINC20 retrieval
+- ✅ BioSolveIT HPSee replaces local FlexX: remote FlexX docking + HYDE scoring (real campaign evidenced)
+- 🟡 HPSee Chemical Space Docking with anchor review: built and tested against a fake HPSee; ⛔ real run needs SeeSAR `.flexx`/`.hydescorer` + a `.space`
 - ✅ FastGrow analogue generation (optional stage) · ➖ Koffee affinity / kinetics: placeholders, deferred by decision
 
 ## Phase 4 — UI

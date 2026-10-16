@@ -1,18 +1,23 @@
 /* Campaign monitor. Every number shown here is read from the server's saved state. */
 const jobId = params.get("job");
-const S = { job: null, stage: null, tab: "ranked", selected: new Set(), timer: null, cands: null, mols: null };
+const S = { job: null, stage: null, tab: "ranked", selected: new Set(), timer: null, cands: null, mols: null,
+  rv: { runId: null, page: 1, size: 50, sel: new Set(), items: [], total: 0, open: 0, confirming: null } };
 
 const STATUS_STYLE = {
   pending: "bg-surface-container text-on-surface-variant", running: "bg-primary/15 text-primary",
   succeeded: "bg-secondary-container/60 text-on-secondary-container", failed: "bg-error-container text-on-error-container",
   retrying: "bg-warning-container text-warning", skipped: "bg-surface-container-high text-outline",
-  cancelled: "bg-warning-container text-warning",
+  cancelled: "bg-warning-container text-warning", awaiting_review: "bg-warning-container text-warning",
+  submitting: "bg-surface-container text-on-surface-variant", reviewed: "bg-secondary-container/60 text-on-secondary-container",
+  extended: "bg-secondary-container/60 text-on-secondary-container", AWAITING_REVIEW: "bg-warning-container text-warning",
   QUEUED: "bg-surface-container text-on-surface-variant", RUNNING: "bg-primary/15 text-primary",
   COMPLETE: "bg-secondary-container/60 text-on-secondary-container", FAILED: "bg-error-container text-on-error-container",
   CANCELLED: "bg-warning-container text-warning",
 };
 const NICE = { QUEUED: "Waiting to start", RUNNING: "Running", COMPLETE: "Complete", FAILED: "Stopped — needs attention", CANCELLED: "Cancelled",
-  pending: "Pending", running: "Running", succeeded: "Done", failed: "Failed", retrying: "Retrying", skipped: "Skipped", cancelled: "Cancelled" };
+  AWAITING_REVIEW: "Waiting for your review",
+  pending: "Pending", running: "Running", succeeded: "Done", failed: "Failed", retrying: "Retrying", skipped: "Skipped", cancelled: "Cancelled",
+  awaiting_review: "Waiting for your review", submitting: "Submitting", reviewed: "Reviewed", extended: "Extended" };
 const chip = (st, text) => `<span class="inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded font-mono-sm text-mono-sm font-medium ${STATUS_STYLE[st] || ""}">${["running", "RUNNING", "retrying"].includes(st) ? '<span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>' : ""}${esc(text || NICE[st] || st)}</span>`;
 const real = (mocked) => mocked
   ? '<span class="px-space-xs rounded bg-surface-container-high text-on-surface-variant font-mono-sm text-mono-sm" title="Placeholder values, not a prediction">placeholder</span>'
@@ -30,15 +35,15 @@ function renderTitle(j) {
   const c = j.config;
   document.getElementById("t-meta").innerHTML = [
     `Protein ${esc(j.target?.pdb_id || j.target?.name || "—")} chain ${esc(c.chain || "—")}`,
-    `Docking ${c.engine === "vina" ? "AutoDock Vina" : "BioSolveIT FlexX"}`,
-    `Library ${esc(c.library_source)} × ${c.library_count}`,
+    `Docking ${esc(j.engine_label || c.engine)}`,
+    c.library_source === "chemical_space" ? `Chemical space ${esc(c.hpsee_space_name || c.hpsee_space_id)}` : `Library ${esc(c.library_source)} × ${c.library_count}`,
     `Started ${fmt.when(j.started_at || j.created_at)}`, `Elapsed ${fmt.elapsed(j.started_at || j.created_at, j.finished_at)}`,
   ].map((x) => `<span>${x}</span>`).join("");
   const o = j.molecule_outcomes || {};
   const total = (o.active || 0) + (o.filtered || 0) + (o.failed || 0);
   document.getElementById("t-summary").textContent = total
     ? `${total} molecules entered. ${o.active || 0} still in contention, ${o.filtered || 0} removed by a stated rule, ${o.failed || 0} could not be processed.`
-    : "Preparing the protein and fetching molecules…";
+    : c.library_source === "chemical_space" ? "Candidates come from the chemical space once anchoring and extension have run." : "Preparing the protein and fetching molecules…";
   const a = [];
   if (j.can_cancel) a.push(`<button data-act="cancel" class="h-9 px-space-md bg-surface-container-low hover:bg-surface-container rounded font-body-sm">Cancel</button>`);
   if (j.can_resume) a.push(`<button data-act="resume" class="h-9 px-space-md bg-primary text-on-primary rounded font-body-sm">Resume from saved progress</button>`);
@@ -49,11 +54,115 @@ function renderTitle(j) {
     alert.innerHTML = `<div class="p-space-md rounded bg-error-container text-on-error-container border-l-2 border-error"><div class="font-headline-sm text-headline-sm">The campaign stopped</div>
       <p class="font-body-default">${esc(j.failure_reason || "A step failed.")}</p>
       <p class="font-body-sm mt-space-xs">Finished work is saved. Open the failed step below to read the reason and the tool's log, then retry the failed batches or resume.</p></div>`;
+  } else if (j.status === "AWAITING_REVIEW") {
+    alert.hidden = false;
+    alert.innerHTML = `<div class="p-space-md rounded bg-warning-container text-warning border-l-2 border-warning"><div class="font-headline-sm text-headline-sm">HPSee results are ready for your review</div>
+      <p class="font-body-default">Nothing more happens until you choose which entries to extend and confirm, below. You can also cancel the campaign.</p></div>`;
   } else if (j.status === "CANCELLED") {
     alert.hidden = false;
     alert.innerHTML = `<div class="p-space-md rounded bg-warning-container text-warning">Cancelled. Finished work is kept; resume to continue.</div>`;
   } else alert.hidden = true;
   document.getElementById("rank-policy").textContent = j.rank_policy;
+}
+
+// ------------------------------------------------------------ HPSee panels ---
+const KIND = { docking: "Docking", scoring: "HYDE scoring", anchoring: "Anchoring", extension: "Extension" };
+function taskBars(tasks) {
+  return (tasks || []).map((t) => `<div class="flex items-center gap-space-sm"><span class="w-28 shrink-0">${esc(t.type || "task")}</span>
+    <div class="flex-1 h-2 rounded-sm bg-surface-container-high overflow-hidden"><div class="h-2 ${t.status === 7 ? "bg-error" : t.progress === 100 ? "bg-secondary" : "bg-primary"}" style="width:${Math.max(0, Math.min(100, Number(t.progress) || 0))}%"></div></div>
+    <span class="w-48 shrink-0 text-right">${t.progress ?? "—"}% · ${esc(t.status_text || "")}</span></div>`).join("");
+}
+async function renderHPSee() {
+  const sec = document.getElementById("hpsee-section"), rsec = document.getElementById("review-section");
+  if (S.job.config.engine !== "hpsee") { sec.hidden = true; rsec.hidden = true; return; }
+  const h = await API.get(`/api/jobs/${jobId}/hpsee`);
+  sec.hidden = !h.runs.length;
+  document.getElementById("hpsee-runs").innerHTML = h.runs.map((r) => `<div class="p-space-sm rounded bg-surface-container-low font-mono-sm text-mono-sm space-y-space-xs">
+    <div class="flex flex-wrap items-center gap-space-sm"><span class="font-headline-sm text-headline-sm">${esc(KIND[r.kind] || r.kind)}${r.kind === "extension" ? ` · round ${r.round}` : ""}</span>${chip(r.status.replace(/-replaced$/, ""), r.status.endsWith("-replaced") ? "superseded" : undefined)}
+      ${r.hpsee_status_text ? `<span class="text-outline">HPSee: ${esc(r.hpsee_status_text)}</span>` : ""}
+      <span class="ml-auto text-outline" title="HPSee workflow id">${esc(r.workflow_id || "not submitted yet")}</span></div>
+    ${taskBars(r.tasks)}
+    <div class="text-outline">${r.selected_count ? `${r.selected_count} entries extended · ` : ""}${r.result_size !== null ? `${fmt.int(r.result_size)} result entries${r.fetched !== null ? `, ${fmt.int(r.fetched)} downloaded` : ""}` : ""}
+      ${r.submitted_at ? ` · submitted ${fmt.when(r.submitted_at)}` : ""}${r.finished_at ? ` · took ${fmt.elapsed(r.submitted_at || r.created_at, r.finished_at)}` : r.submitted_at ? ` · running for ${fmt.elapsed(r.submitted_at)}` : ""}</div>
+    ${r.error ? `<div class="${r.status === "failed" ? "text-error" : "text-warning"} break-words">${esc(r.error)}${r.status === "failed" ? (r.retryable ? " — use <em>Resume</em> or retry the batch; HPSee is asked to requeue its failed jobs where it can." : " — retrying will not help until the cause (licence, input or access) is fixed.") : ""}</div>` : ""}
+  </div>`).join("");
+  if (!h.review) { rsec.hidden = true; S.rv.runId = null; return; }
+  rsec.hidden = false;
+  if (S.rv.runId !== h.review.run_id) { S.rv = { ...S.rv, runId: h.review.run_id, page: 1, sel: new Set(), confirming: null, review: h.review }; await loadReviewPage(); }
+  else { S.rv.review = h.review; renderReviewActions(); }
+}
+async function loadReviewPage() {
+  const d = await API.get(`/api/jobs/${jobId}/hpsee/runs/${S.rv.runId}/entries?page=${S.rv.page}&size=${S.rv.size}`);
+  S.rv.items = d.items; S.rv.total = d.total;
+  const r = S.rv.review, s = r.summary || {};
+  const anchors = r.kind === "anchoring";
+  document.getElementById("rv-title").textContent = anchors ? "Review the anchors" : `Review extension round ${r.round}`;
+  document.getElementById("rv-intro").innerHTML = anchors
+    ? `HPSee docked and scored the building blocks (anchors) of <strong>${esc(S.job.config.hpsee_space_name || "the chemical space")}</strong>: ${fmt.int(s.result_size)} poses returned, the best ${fmt.int(s.entries)} downloaded (${esc(s.sorted_by || "")}).
+       Select the anchors worth growing (up to ${r.max_selection}). Only those are extended into full molecules. Anchors are fragments, not drugs: their scores only show how well that piece sits in the pocket.
+       In the structures, <strong>U</strong> (or Np, Pu, Am) is BioSolveIT's marker for an open attachment point, where the next building block joins. It is not uranium.`
+    : `Round ${r.round} produced ${fmt.int(s.complete)} complete molecule(s) and ${fmt.int(s.with_open_attachment_points)} that still have open attachment points (this space joins more than two building blocks).
+       Select entries to extend again${r.can_finish ? ", or finish and evaluate the complete molecules found so far" : ""}. At most ${r.max_rounds} rounds.`;
+  const rows = S.rv.items.map((e) => {
+    const can = e.open_attachment_points > 0;
+    return `<tr class="align-middle ${S.rv.sel.has(e.entry_id) ? "bg-primary/5" : ""}">
+      <td class="p-space-sm">${can ? `<input type="checkbox" data-rv="${e.entry_id}" ${S.rv.sel.has(e.entry_id) ? "checked" : ""}>` : '<span class="text-outline" title="Complete molecule: nothing to extend">✓</span>'}</td>
+      <td class="p-space-sm">${e.rank}</td>
+      <td class="p-space-sm"><div class="structure-cell w-36 h-20 bg-white rounded">${e.structure_svg || '<span class="text-outline">no depiction</span>'}</div></td>
+      <td class="p-space-sm"><div class="font-semibold">${esc(e.name || "")}</div><div class="text-outline">HPSee entry ${e.entry_id}</div>${e.note ? `<div class="text-warning">${esc(e.note)}</div>` : ""}</td>
+      <td class="p-space-sm text-right">${e.open_attachment_points}</td>
+      <td class="p-space-sm text-right">${num(e.docking_score, 2)}</td>
+      <td class="p-space-sm text-right">${e.hyde_affinity_lower_nm === null ? "—" : sci(e.hyde_affinity_lower_nm) + " – " + sci(e.hyde_affinity_upper_nm)}</td>
+      <td class="p-space-sm text-right">${num(e.hyde_ligand_efficiency, 2)}</td><td class="p-space-sm">${esc(e.hyde_inter_clash || "—")}</td>
+      <td class="p-space-sm"><a class="underline text-primary" href="/api/jobs/${jobId}/hpsee/runs/${S.rv.runId}/entries/${e.entry_id}/sdf">pose</a></td></tr>`;
+  }).join("");
+  document.getElementById("rv-rows").innerHTML = rows || '<tr><td colspan="10" class="p-space-md text-outline">No entries.</td></tr>';
+  const pages = Math.max(1, Math.ceil(S.rv.total / S.rv.size));
+  document.getElementById("rv-pager").innerHTML = `<button data-rvpage="${S.rv.page - 1}" ${S.rv.page <= 1 ? "disabled" : ""} class="px-space-sm h-7 rounded bg-surface-container-low disabled:opacity-40">‹ Previous</button>
+    <span>Page ${S.rv.page} of ${pages} · ${fmt.int(S.rv.total)} entries, best first (HYDE estimated affinity, then docking score)</span>
+    <button data-rvpage="${S.rv.page + 1}" ${S.rv.page >= pages ? "disabled" : ""} class="px-space-sm h-7 rounded bg-surface-container-low disabled:opacity-40">Next ›</button>`;
+  document.getElementById("rv-page-all").checked = false;
+  renderReviewActions();
+}
+function renderReviewActions() {
+  const r = S.rv.review, n = S.rv.sel.size;
+  document.getElementById("rv-actions").innerHTML = `<span class="font-mono-sm text-mono-sm text-outline">${n} selected (max ${r.max_selection})</span>
+    ${n ? '<button data-rvact="clear" class="h-9 px-space-md bg-surface-container-low rounded font-body-sm">Clear</button>' : ""}
+    ${r.can_finish ? '<button data-rvact="ask-finish" class="h-9 px-space-md bg-surface-container-low hover:bg-surface-container rounded font-body-sm">Finish with the complete molecules…</button>' : ""}
+    <button data-rvact="ask-extend" ${n && n <= r.max_selection ? "" : "disabled"} class="h-9 px-space-md bg-primary text-on-primary rounded font-body-sm disabled:opacity-40">Extend ${n || ""} selected…</button>`;
+  const box = document.getElementById("rv-confirm");
+  if (!S.rv.confirming) { box.hidden = true; return; }
+  box.hidden = false;
+  const s = r.summary || {};
+  box.innerHTML = S.rv.confirming === "extend"
+    ? `<div class="font-headline-sm text-headline-sm">Confirm extension</div>
+       <p class="font-body-default">HPSee will grow the <strong>${n}</strong> selected ${r.kind === "anchoring" ? "anchor(s)" : "entries"} into larger molecules of the chemical space and dock and score them (round ${r.round + 1}),
+       using the SeeSAR definitions uploaded with this campaign${S.job.config.hpsee_extension_filters ? ` and the extension filter <code>${esc(S.job.config.hpsee_extension_filters)}</code>` : ""}.
+       This uses HPSee compute time. You can cancel it while it runs, but jobs already running on an HPSee worker finish anyway.</p>
+       <div class="flex gap-space-sm"><button data-rvact="do-extend" class="h-9 px-space-md bg-primary text-on-primary rounded font-body-sm">Yes, extend ${n}</button>
+       <button data-rvact="back" class="h-9 px-space-md bg-surface-container-lowest rounded font-body-sm">Back to the selection</button></div>`
+    : `<div class="font-headline-sm text-headline-sm">Finish extension</div>
+       <p class="font-body-default">Stop extending. The <strong>${fmt.int(s.complete)}</strong> complete molecule(s) found so far (best ${S.job.config.hpsee_max_products} at most) go on to synthetic-accessibility and ADMET screening.
+       Entries that still have open attachment points are dropped.</p>
+       <div class="flex gap-space-sm"><button data-rvact="do-finish" class="h-9 px-space-md bg-primary text-on-primary rounded font-body-sm">Yes, finish</button>
+       <button data-rvact="back" class="h-9 px-space-md bg-surface-container-lowest rounded font-body-sm">Back</button></div>`;
+}
+async function reviewAction(act) {
+  clearError("rv-error");
+  if (act === "clear") S.rv.sel.clear();
+  else if (act === "ask-extend") S.rv.confirming = "extend";
+  else if (act === "ask-finish") S.rv.confirming = "finish";
+  else if (act === "back") S.rv.confirming = null;
+  else if (act === "do-extend" || act === "do-finish") {
+    try {
+      await API.postJSON(`/api/jobs/${jobId}/hpsee/review`, { run_id: S.rv.runId, action: act === "do-extend" ? "extend" : "finish",
+        entry_ids: act === "do-extend" ? [...S.rv.sel] : [], confirm: true });
+      S.rv.runId = null; S.rv.confirming = null;
+      return refresh();
+    } catch (e) { S.rv.confirming = null; showError("rv-error", e.message, [], "Could not submit the review"); }
+  }
+  if (act !== "clear") return renderReviewActions();
+  return loadReviewPage();
 }
 
 function segBar(b) {
@@ -144,7 +253,8 @@ async function renderResults() {
     const d = await API.candidates(jobId);
     const rows = d.candidates;
     if (!rows.length) {
-      host.innerHTML = `<div class="p-space-xl text-center text-outline">${["QUEUED", "RUNNING"].includes(j.status) ? "Candidates appear here as soon as the scoring steps have finished." : "No molecule passed every filter. Open 'Removed by a rule' to see why, or loosen the filters in a new campaign."}</div>`;
+      host.innerHTML = `<div class="p-space-xl text-center text-outline">${j.status === "AWAITING_REVIEW" ? "Candidates appear here after you have reviewed the HPSee results above and extension has finished."
+        : ["QUEUED", "RUNNING"].includes(j.status) ? "Candidates appear here as soon as the scoring steps have finished." : "No molecule passed every filter. Open 'Removed by a rule' to see why, or loosen the filters in a new campaign."}</div>`;
       return;
     }
     host.innerHTML = `${d.provisional ? '<div class="px-space-md pb-space-sm font-body-sm text-warning">Provisional: the campaign is still running, so this list and its order may change.</div>' : ""}
@@ -168,10 +278,15 @@ async function renderResults() {
 
 function renderSide(j) {
   const c = j.config;
-  const rows = [["Protein", `${j.target?.pdb_id || j.target?.name} chain ${c.chain}`], ["Pocket", c.site.mode === "ligand" ? `around ${c.site.reference}` : "manual box"],
-    ["Box centre (Å)", c.site.center.join(", ")], ["Box size (Å)", c.site.size.join(" × ")], ["Docking effort", c.engine === "vina" ? `exhaustiveness ${c.exhaustiveness}` : "FlexX defaults"],
-    ["Docking cut", `best ${Math.round(c.dock_keep_fraction * 100)}%`], ["SA limit", `≤ ${c.sa_threshold}`], ["ADMET gate", c.enable_admet ? (c.strict_admet_gate ? "no alerts" : "≤ 1 alert") : "off"],
-    ["Seed", c.library_seed], ["Tools", j.stages.filter((s) => s.tool).map((s) => s.tool).join(" · ")]];
+  const isCsd = c.library_source === "chemical_space";
+  const rows = [["Protein", `${j.target?.pdb_id || j.target?.name} chain ${c.chain}`], ["Pocket", isCsd ? "from the SeeSAR docking definition" : c.site.mode === "ligand" ? `around ${c.site.reference}` : "manual box"],
+    ["Box centre (Å)", c.site.center.join(", ")], ["Box size (Å)", c.site.size.join(" × ")],
+    ["Docking effort", c.engine === "vina" ? `exhaustiveness ${c.exhaustiveness}` : c.engine === "hpsee" ? (isCsd ? "set by the SeeSAR definition" : "HPSee's FlexX settings") : "FlexX defaults"],
+    ...(isCsd ? [["Chemical space", c.hpsee_space_name || c.hpsee_space_id], ["Anchoring filter", c.hpsee_anchor_filters || "none"],
+                 ["Extension filter", c.hpsee_extension_filters || "none"], ["Products evaluated", `best ${c.hpsee_max_products}`]]
+               : [["Docking cut", `best ${Math.round(c.dock_keep_fraction * 100)}%`]]),
+    ["SA limit", `≤ ${c.sa_threshold}`], ["ADMET gate", c.enable_admet ? (c.strict_admet_gate ? "no alerts" : "≤ 1 alert") : "off"],
+    ...(isCsd ? [] : [["Seed", c.library_seed]]), ["Tools", j.stages.filter((s) => s.tool).map((s) => s.tool).join(" · ")]];
   document.getElementById("used").innerHTML = rows.map(([a, b]) => `<div class="flex justify-between gap-space-md bg-surface-container-low p-space-xs rounded"><span class="text-outline shrink-0">${a}</span><span class="text-right break-words">${esc(b)}</span></div>`).join("");
   document.getElementById("events").innerHTML = j.events.map((e) => `<div class="flex gap-space-sm"><span class="text-outline shrink-0">${fmt.when(e.at)}</span><span class="shrink-0 font-semibold">${esc(e.stage)}</span><span class="${/FAILED/.test(e.status) ? "text-error" : ""}">${esc(e.status)}${e.detail ? " — " + esc(e.detail) : ""}</span></div>`).join("");
 }
@@ -204,7 +319,9 @@ async function openCandidate(id) {
   body.innerHTML = `
     <div class="flex justify-between items-start"><div><div class="font-label-caps text-label-caps text-outline uppercase">Molecule</div>
       <h2 class="font-headline-lg text-headline-lg">${esc(m.display_id)}</h2>
-      <div class="font-mono-sm text-mono-sm text-outline">${esc(m.source === "zinc20" ? "ZINC20 catalogue compound" : m.source)} ${esc(m.source_id || "")} — an existing catalogue entry, not a newly designed molecule</div></div>
+      <div class="font-mono-sm text-mono-sm text-outline">${m.source === "hpsee_csd"
+        ? `Member of the chemical space ${esc(S.job?.config?.hpsee_space_name || "")} (${esc(m.source_id || "")}): enumerated by HPSee from building blocks, a make-on-demand molecule, not catalogue stock`
+        : `${esc(m.source === "zinc20" ? "ZINC20 catalogue compound" : m.source)} ${esc(m.source_id || "")} — an existing catalogue entry, not a newly designed molecule`}</div></div>
       <button id="drawer-close" class="material-symbols-outlined">close</button></div>
     <div class="flex flex-wrap items-center gap-space-sm">${m.rank ? `<span class="px-space-sm py-space-2xs rounded bg-primary text-on-primary font-mono-data">Rank ${m.rank}</span>` : ""}
       ${m.outcome === "active" ? chip("succeeded", "Passed every filter") : chip(m.outcome === "failed" ? "failed" : "retrying", m.outcome === "failed" ? "Could not be processed" : "Removed by a rule")}
@@ -218,9 +335,9 @@ async function openCandidate(id) {
     <section><h3 class="font-headline-sm text-headline-sm">Docking ${real(false)}</h3>
       <p class="font-body-sm text-body-sm text-on-surface-variant">How well the molecule is predicted to fit the pocket. More negative is a better predicted fit. This is a computed estimate, not a measurement.</p>
       <div class="mt-space-xs space-y-space-2xs font-mono-data text-mono-data">
-        ${d.score !== undefined ? kv(esc(d.engine === "vina" ? "AutoDock Vina score" : "FlexX score"), `${d.score} ${esc(d.score_unit)}`, "Different programs use different scales") + kv("Poses found", d.n_poses) : '<div class="text-outline">Not available.</div>'}</div></section>
+        ${d.score !== undefined ? kv(esc(d.engine === "vina" ? "AutoDock Vina score" : d.engine === "hpsee" ? "HPSee docking score" : "FlexX score"), `${d.score} ${esc(d.score_unit)}`, "Different programs use different scales") + kv("Poses found", d.n_poses) : '<div class="text-outline">Not available.</div>'}</div></section>
     ${h.cumulative_kj_mol !== undefined ? `<section><h3 class="font-headline-sm text-headline-sm">HYDE re-score ${real(false)}</h3>
-      <p class="font-body-sm text-body-sm text-on-surface-variant">A physics-based estimate that includes the cost of stripping water from the molecule and the pocket. The affinity range is HYDE's own uncertainty band: the real value is predicted to lie between the two ends.</p>
+      <p class="font-body-sm text-body-sm text-on-surface-variant">A physics-based estimate that includes the cost of stripping water from the molecule and the pocket. The affinity range is HYDE's own uncertainty band: the real value is predicted to lie between the two ends.${h.cumulative_kj_mol === null ? " Scored on HPSee, which does not report per-atom HYDE scores, so the total score and its parts are not available. The affinity range is." : ""}</p>
       <div class="mt-space-xs space-y-space-2xs font-mono-data text-mono-data">
         ${kv("Total HYDE score", energy(h.cumulative_kj_mol), "Sum of per-atom contributions; more negative is better")}
         ${h.components_kj_mol ? kv("↳ Protein desolvation", energy(h.components_kj_mol.rec_desolv), "Energy cost of removing water from the pocket (usually unfavourable, positive)") +
@@ -283,6 +400,16 @@ document.addEventListener("click", async (ev) => {
   const t = ev.target.closest("[data-stage],[data-act],[data-tab],[data-mol],[data-log],[data-batch]");
   if (ev.target.id === "drawer-bg") return closeDrawer();
   if (ev.target.id === "log-bg" || ev.target.id === "log-close") return (document.getElementById("logbox").hidden = true);
+  if (ev.target.id === "rv-page-all") {
+    S.rv.items.filter((e) => e.open_attachment_points > 0).forEach((e) => (ev.target.checked ? S.rv.sel.add(e.entry_id) : S.rv.sel.delete(e.entry_id)));
+    return loadReviewPage();
+  }
+  const rv = ev.target.closest("[data-rv],[data-rvact],[data-rvpage]");
+  if (rv) {
+    if (rv.dataset.rv) { const id = Number(rv.dataset.rv); rv.checked ? S.rv.sel.add(id) : S.rv.sel.delete(id); S.rv.confirming = null; return renderReviewActions(); }
+    if (rv.dataset.rvpage) { S.rv.page = Number(rv.dataset.rvpage); return loadReviewPage(); }
+    return reviewAction(rv.dataset.rvact);
+  }
   if (ev.target.id === "b-retry") {
     try {
       const body = S.selected.size ? { batch_ids: [...S.selected], failed_molecules: false } : { failed_molecules: true };
@@ -307,14 +434,14 @@ async function refresh() {
     document.getElementById("content").hidden = false;
     document.getElementById("unit-toggle").checked = UNIT.kcal;
     renderTitle(j); renderStages(j); renderSide(j);
-    await Promise.all([renderBatches(), renderResults(), renderFiles()]);
+    await Promise.all([renderBatches(), renderResults(), renderFiles(), renderHPSee()]);
     Shell.render({ active: "run", breadcrumb: [{ label: "Discoveries", href: "discoveries.html" }, { label: j.label || "Campaign" }], context: [{ label: "STATUS", value: NICE[j.status] }] });
     Shell.loadEngines();
   } catch (e) {
     showError("load-error", e.message); document.getElementById("load-error").hidden = false;
   }
   clearTimeout(S.timer);
-  const live = S.job && ["QUEUED", "RUNNING"].includes(S.job.status);
+  const live = S.job && ["QUEUED", "RUNNING"].includes(S.job.status);   // a campaign awaiting review polls slowly
   S.timer = setTimeout(refresh, live ? 2000 : 10000);
 }
 

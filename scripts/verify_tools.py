@@ -49,6 +49,8 @@ def main():
     poses = []
 
     for key, st in registry.tool_statuses().items():
+        if key == "flexx":
+            continue   # local FlexX is superseded by HPSee (legacy campaigns only)
         results.append((f"{key} detected", "PASS" if st.available else "SKIP",
                         (st.version or "") + " " + (st.license_detail or st.reason or "")))
 
@@ -62,13 +64,38 @@ def main():
         return f"scores {[r.score for r in res]}"
     step("Vina docking", vina, "vina")
 
-    def flexx():
-        from backend.science.engines.flexx import FlexxEngine
-        res = FlexxEngine().dock_batch(items, protein_pdb=tmp / "protein.pdb", ref_ligand_sdf=tmp / "ref_ligand.sdf",
-                                       workdir=tmp / "f", log_path=tmp / "f.log", cfg=cfg, timeout=900)
-        assert sum(r.ok for r in res) >= 1, [r.error for r in res]
-        return f"scores {[r.score for r in res if r.ok]}"
-    step("FlexX docking", flexx, "flexx")
+    # BioSolveIT HPSee replaces local FlexX for new campaigns: a real 2-molecule docking + HYDE workflow.
+    from backend.science.engines import hpsee as H
+    hst = H.status(refresh=True)
+    results.append(("HPSee connection", "PASS" if hst.authenticated else ("SKIP" if not hst.configured else "FAIL"),
+                    f"{hst.version or ''} " + (hst.reason or "licensed: " + ", ".join(k for k, v in hst.licenses.items() if v["licensed"]))))
+    if not (hst.docking_ready and hst.scoring_ready):
+        results.append(("HPSee docking + HYDE", "SKIP", hst.reason or "not configured"))
+    else:
+        def hpsee():
+            from rdkit import Chem
+            from backend.science.engines.common import write_3d_library
+            c = H.HPSeeClient()
+            write_3d_library(items, tmp / "hp_lib.sdf", 42)
+
+            def run(info):
+                wid = info["workflowId"]
+                for _ in range(360):
+                    info = c.workflow(wid)
+                    if info["status"] in H.TERMINAL:
+                        break
+                    time.sleep(5)
+                assert info["status"] == H.SUCCESSFUL, f"workflow {wid}: {info.get('statusDescription')}"
+                return [H.parse_entry(e["entryId"], e["entry"]) for e in c.library_entries(info["result"]["libraryId"], limit=200)]
+            docked = run(c.start_docking(tmp / "protein.pdb", tmp / "ref_ligand.sdf", tmp / "hp_lib.sdf",
+                                         description="MDP verify_tools (safe to delete)"))
+            assert docked and all(e.docking_score is not None for e in docked)
+            (tmp / "hp_poses.sdf").write_text("".join(e.record for e in docked))
+            scored = run(c.start_scoring(tmp / "protein.pdb", tmp / "ref_ligand.sdf", tmp / "hp_poses.sdf",
+                                         description="MDP verify_tools (safe to delete)"))
+            assert scored and all(e.hyde and e.hyde.affinity_lower_nm for e in scored)
+            return f"{len(docked)} poses, best FlexX {min(e.docking_score for e in docked)}; {len(scored)} HYDE-scored"
+        step("HPSee docking + HYDE", hpsee)
 
     def hyde():
         from backend.science.engines.hyde import HydeEngine

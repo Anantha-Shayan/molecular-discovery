@@ -15,6 +15,7 @@ from .config import settings
 from .database import get_session
 from .science import admet as admet_model
 from .science import site as sitelib
+from .science.engines import hpsee as hpsee_api
 from .stages import depiction
 from .tools import registry
 
@@ -46,6 +47,7 @@ def tools():
     st = {k: v.public() for k, v in registry.tool_statuses().items()}
     return {
         "tools": st,
+        "services": {"hpsee": hpsee_api.status().public()},
         "models": [
             {"key": "admet", "name": admet_model.MODEL_NAME, "available": True},
             {
@@ -138,18 +140,50 @@ def create_job(req: schemas.CreateJobRequest):
             params = req.model_dump(exclude={"target_id", "label", "site"})
             params["site"] = site
             params["chain"] = req.chain or t.selected_chain
-            tool = registry.get(req.engine) if req.engine in ("vina", "flexx") else None
-            if tool is None:
-                raise P.ParamError("Unknown docking engine.")
-            if not tool.available:
-                raise P.ParamError(f"{tool.name} is not available on this server: {tool.reason}")
-            if req.enable_hyde and not registry.get("hydescorer").available:
-                raise P.ParamError("HYDE is not available on this server; turn HYDE scoring off.")
-            job = rn.create_campaign(s, t, params, req.label or f"{t.pdb_id or t.name} · {req.engine}")
+            label = _check_engine(req, params)
+            job = rn.create_campaign(s, t, params, req.label or f"{t.pdb_id or t.name} · {label}")
         except (sitelib.SiteError, P.ParamError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except hpsee_api.HPSeeError as exc:
             raise HTTPException(422, str(exc)) from exc
         s.flush()
         return {"job_id": job.id}
+
+
+def _check_engine(req: schemas.CreateJobRequest, params: dict) -> str:
+    """Refuse up front what cannot run here; returns a short engine label for the campaign name."""
+    if req.engine not in P.ENGINES:
+        raise P.ParamError(f"Unknown docking engine '{req.engine}'. Choose one of: {', '.join(P.ENGINES)}.")
+    if req.engine == "vina":
+        tool = registry.get("vina")
+        if not tool.available:
+            raise P.ParamError(f"{tool.name} is not available on this server: {tool.reason}")
+        if req.enable_hyde and not registry.get("hydescorer").available:
+            raise P.ParamError("HYDE is not available on this server; turn HYDE scoring off.")
+        return "vina"
+    # HPSee: what it can run is whatever its own licence endpoint says, checked live.
+    if req.hpsee_mode not in P.HPSEE_MODES:
+        raise P.ParamError(f"hpsee_mode must be one of {P.HPSEE_MODES}")
+    hpsee_api.status(refresh=True)
+    if req.hpsee_mode == "library":
+        hpsee_api.require_status(hpsee_api.WF_DOCKING, *([hpsee_api.WF_SCORING] if req.enable_hyde else []))
+        return "HPSee docking"
+    hpsee_api.require_status(hpsee_api.WF_ANCHORING, hpsee_api.WF_EXTENSION)
+    if not req.hpsee_space_id:
+        raise P.ParamError("Choose the HPSee Chemical Space to search.")
+    try:
+        space = hpsee_api.HPSeeClient().chemical_space(req.hpsee_space_id)
+    except hpsee_api.HPSeeError as exc:
+        if exc.category == "not_found":
+            raise P.ParamError("That Chemical Space does not exist on HPSee (any more).") from exc
+        raise
+    prep = (space.get("preparationWorkflowInfo") or {}).get("status")
+    if prep is not None and prep not in (hpsee_api.SUCCESSFUL, hpsee_api.FINISHED_WITH_ERRORS):
+        raise P.ParamError(f"The Chemical Space '{space.get('spaceName')}' is not prepared yet on HPSee "
+                           f"({(space.get('preparationWorkflowInfo') or {}).get('statusDescription')}).")
+    params["hpsee_space_name"] = space.get("spaceName")
+    params["library_source"], params["library_count"] = "chemical_space", min(P.MAX_LIBRARY, req.hpsee_max_products)
+    return f"HPSee C-S-D {space.get('spaceName')}"
 
 
 # ---------------------------------------------------------------- list ------
@@ -168,7 +202,9 @@ def list_jobs(limit: int = Query(50, ge=1, le=200)):
             out.append({
                 "job_id": j.id, "label": j.label, "status": j.status, "current_stage": j.current_stage,
                 "target_name": t.name if t else "—", "pdb_id": t.pdb_id if t else None,
-                "engine": p["engine"], "library_source": p["library_source"],
+                "engine": p["engine"], "hpsee_mode": p["hpsee_mode"] if p["engine"] == "hpsee" else None,
+                "engine_label": P.engine_label(p), "library_source": p["library_source"],
+                "chemical_space": p["hpsee_space_name"] if P.is_csd(p) else None,
                 "molecules": n_total, "candidate_count": n_active if j.status == "COMPLETE" else None,
                 "created_at": _iso(j.created_at), "finished_at": _iso(j.finished_at),
             })
@@ -212,11 +248,12 @@ def job_detail(job_id: str):
             "created_at": _iso(j.created_at), "started_at": _iso(j.started_at), "finished_at": _iso(j.finished_at),
             "updated_at": _iso(j.updated_at),
             "target": {"target_id": t.id, "name": t.name, "pdb_id": t.pdb_id, "chain": p["chain"]} if t else None,
-            "config": public_params, "rank_policy": P.rank_policy_text(p),
+            "config": public_params, "engine_label": P.engine_label(p), "rank_policy": P.rank_policy_text(p),
             "stages": stage_cards, "molecule_outcomes": outcome,
             "events": [{"stage": e.stage, "status": e.status, "detail": e.detail, "at": _iso(e.started_at)} for e in events],
             "can_resume": j.status in ("FAILED", "CANCELLED"),
-            "can_cancel": j.status in ("QUEUED", "RUNNING") and not j.cancel_requested,
+            "can_cancel": j.status in ("QUEUED", "RUNNING", "AWAITING_REVIEW") and not j.cancel_requested,
+            "awaiting_review": j.status == "AWAITING_REVIEW",
         }
 
 
@@ -339,10 +376,11 @@ def candidate_detail(molecule_id: str):
         prov = []
         for st in stages:
             meta = P.STAGES[st.stage]
-            if st.status == "skipped" or st.stage in ("prepare", "library", "rank"):
+            if st.status == "skipped" or st.stage in ("prepare", "library", "rank", "csd_anchoring"):
                 continue
+            has = st.stage in by or (st.stage == "csd_extension" and "docking" in by)
             prov.append({"stage": st.stage, "label": meta["label"], "mocked": meta["mocked"], "tool": st.tool,
-                         "has_result": st.stage in by, "error": errors.get(st.stage)})
+                         "has_result": has, "error": errors.get(st.stage)})
         rank = by.get("rank", {}).get("rank")
         return {
             **_candidate_row(m, by, rank), "svg_large": depiction.svg_for_smiles(m.smiles, 320, 220),

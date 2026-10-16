@@ -89,7 +89,7 @@
         WHAT IS REAL IN THIS APPLICATION
       </div>
       <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-        Every campaign here runs real software: AutoDock Vina (and BioSolveIT FlexX where installed)
+        Every campaign here runs real software: AutoDock Vina, or BioSolveIT FlexX and Chemical Space Docking on an HPSee server,
         for docking, BioSolveIT HYDE for re-scoring, RDKit for synthetic accessibility and the ADMET-AI
         model for ADMET. Binding affinity and unbinding kinetics (Koffee) are still placeholders and are
         labelled as such wherever they appear. Results are computational predictions to prioritise
@@ -133,7 +133,7 @@
             <div class="font-mono-sm text-mono-sm text-outline">${job.pdb_id ? "PDB " + esc(job.pdb_id) : "—"}</div>
           </td>
           <td class="px-space-md py-space-sm font-mono-sm text-mono-sm text-on-surface-variant">
-            ${esc(job.engine === "flexx" ? "FlexX" : "Vina")} · ${esc(job.library_source)}
+            ${esc(job.engine === "hpsee" ? (job.hpsee_mode === "chemical_space" ? "HPSee C-S-D" : "HPSee") : job.engine === "flexx" ? "FlexX (legacy)" : "Vina")} · ${esc(job.chemical_space || job.library_source)}
           </td>
           <td class="px-space-md py-space-sm">${statusChip(job.status)}</td>
           <td class="px-space-md py-space-sm text-right font-mono-data text-mono-data text-on-surface">${fmt.int(job.candidate_count)}</td>

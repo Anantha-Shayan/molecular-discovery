@@ -267,11 +267,18 @@ const Shell = {
     if (!host) return;
     try {
       const info = await API.tools();
-      const rows = Object.values(info.tools).map((t) => `
+      // Local FlexX is superseded by HPSee for new campaigns; it is not listed as an engine any more.
+      const rows = Object.values(info.tools).filter((t) => t.key !== "flexx").map((t) => `
         <div class="flex items-center justify-between gap-space-xs" title="${esc(t.reason || t.license_detail || t.version || "")}">
           <span class="truncate">${esc(t.name.replace("BioSolveIT ", ""))}</span>
           <span class="shrink-0 px-space-xs py-space-2xs rounded text-mono-sm ${t.available ? "bg-secondary-container/60 text-on-secondary-container font-semibold" : "bg-error-container text-on-error-container"}">${t.available ? "ready" : "not installed"}</span>
         </div>`);
+      const h = info.services && info.services.hpsee;
+      if (h) rows.push(`
+        <div class="flex items-center justify-between gap-space-xs" title="${esc(h.reason || ("HPSee " + (h.version || "")))}">
+          <span class="truncate">HPSee</span>
+          <span class="shrink-0 px-space-xs py-space-2xs rounded text-mono-sm ${h.available ? "bg-secondary-container/60 text-on-secondary-container font-semibold" : "bg-error-container text-on-error-container"}">${
+            h.available ? "connected" : !h.configured ? "not configured" : !h.authenticated ? "unreachable" : "not licensed"}</span></div>`);
       rows.push(...info.models.map((m) => `
         <div class="flex items-center justify-between gap-space-xs" title="${esc(m.reason || m.note || "")}">
           <span class="truncate">${esc(m.name)}</span>
@@ -301,7 +308,7 @@ function badgeHTML(isMocked) {
 // ---------------------------------------------------------------------------
 // Inline messaging
 // ---------------------------------------------------------------------------
-function showError(hostId, message, checks = []) {
+function showError(hostId, message, checks = [], title = "Could not use this structure") {
   const host = document.getElementById(hostId);
   if (!host) return;
   const checkList = (checks || [])
@@ -319,7 +326,7 @@ function showError(hostId, message, checks = []) {
     <div class="p-space-md rounded bg-error-container border-l-2 border-error space-y-space-xs">
       <div class="flex items-center gap-space-xs text-on-error-container font-headline-sm text-headline-sm">
         <span class="material-symbols-outlined text-[18px]">error</span>
-        Could not use this structure
+        ${esc(title)}
       </div>
       <p class="font-body-default text-body-default text-on-error-container">${esc(message)}</p>
       ${checkList ? `<ul class="font-body-sm text-body-sm text-on-error-container space-y-space-2xs mt-space-xs">${checkList}</ul>` : ""}

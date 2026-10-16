@@ -5,7 +5,9 @@ Each executor takes the molecules of ONE batch and returns one `MolOutcome`
 per molecule. A molecule-level problem (cannot embed, tool rejected it) is a
 failed outcome for that molecule only; a batch-level problem (tool missing,
 crash, timeout) raises, which the runner records against the whole batch.
-Executors never touch the database: the runner persists their results.
+Executors never touch the database: the runner persists their results. (The
+HPSee engines are the exception: they record their remote workflow in
+hpsee_runs so a restart re-attaches to it instead of submitting it again.)
 """
 from __future__ import annotations
 
@@ -47,6 +49,8 @@ class Ctx:
     target: TargetContext
     prior: dict             # {molecule_id: {stage: payload}} for stages already done
     cpu: int                # CPU threads this batch may use
+    batch_id: str | None = None
+    shutdown: threading.Event | None = None   # set when the application stops (remote work keeps running)
 
 
 Progress = Callable[[int, int], None]
@@ -82,7 +86,11 @@ def run_docking(ctx: Ctx, mols: list[MolRef], batch_dir: Path, log_path: Path,
             ok, failed = (ok + 1, failed) if res.ok else (ok, failed + 1)
             progress(ok, failed)
         return outcomes
-    eng = flexx_engine.FlexxEngine()
+    if p["engine"] == "hpsee":
+        from .hpsee_flow import HPSeeDockingEngine
+        eng = HPSeeDockingEngine(ctx.job_id, ctx.batch_id, ctx.shutdown)
+    else:
+        eng = flexx_engine.FlexxEngine()   # legacy campaigns only
     results = eng.dock_batch(
         items, protein_pdb=prep / "protein.pdb", ref_ligand_sdf=prep / "ref_ligand.sdf",
         workdir=batch_dir, log_path=log_path, cfg=cfg, timeout=timeout,
@@ -110,6 +118,13 @@ def _dock_outcome(ctx: Ctx, mols: list[MolRef], res, eng, p) -> MolOutcome:
     })
 
 
+def _hyde_engine(ctx: Ctx):
+    if ctx.params["engine"] == "hpsee":
+        from .hpsee_flow import HPSeeHydeEngine
+        return HPSeeHydeEngine(ctx.job_id, ctx.batch_id, ctx.shutdown)
+    return HydeEngine()
+
+
 def run_hyde(ctx: Ctx, mols: list[MolRef], batch_dir: Path, log_path: Path,
              cancel: threading.Event, progress: Progress, timeout: float) -> list[MolOutcome]:
     prep = ctx.job_dir / "prepare"
@@ -125,7 +140,7 @@ def run_hyde(ctx: Ctx, mols: list[MolRef], batch_dir: Path, log_path: Path,
             rel = ctx.prior.get(m.id, {}).get("docking", {}).get("pose_path")
             if rel:
                 fh.write((ctx.job_dir / rel).read_text())
-    eng = HydeEngine()
+    eng = _hyde_engine(ctx)
     scores = eng.score(
         poses, protein_pdb=prep / "protein.pdb", ref_ligand_sdf=prep / "ref_ligand.sdf",
         workdir=batch_dir, log_path=log_path, threads=ctx.cpu, timeout=timeout, cancel_event=cancel,
@@ -134,7 +149,7 @@ def run_hyde(ctx: Ctx, mols: list[MolRef], batch_dir: Path, log_path: Path,
     for m in mols:
         s = scores.get(m.display_id)
         if s is None:
-            outcomes.append(MolOutcome(m.id, False, error="HYDE filtered out this pose: it did not meet HYDE's input or optimisation quality criteria"))
+            outcomes.append(MolOutcome(m.id, False, error="HYDE returned no score for this molecule: its pose did not meet HYDE's input or optimisation quality criteria"))
             continue
         pose = _poses_dir(ctx, "hyde") / f"{m.display_id}.sdf"
         pose.write_text(s.pose_text)

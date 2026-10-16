@@ -13,6 +13,7 @@ only be completed on the server are marked **[SERVER ONLY]**.
 | AutoDock Vina 1.2.7 (Apache-2.0) | downloaded in the Dockerfile, SHA-256 pinned | yes |
 | RDKit, Meeko, PDBFixer, ADMET-AI (CPU torch) | `requirements.txt` | yes |
 | BioSolveIT FlexX / HYDE / FastGrow | vendor download (login on biosolveit.de) | **no** (vendor licence) |
+| BioSolveIT HPSee (FlexX, HYDE, Chemical Space Docking) | its own Docker stack, reached over HTTP (`HPSEE_URL`) | **no** (separate service) |
 | BioSolveIT licence file | vendor | **never** (bind-mounted at runtime) |
 | Koffee (affinity, kinetics) | deferred | stages are labelled placeholders |
 
@@ -81,10 +82,10 @@ curl -s localhost:8008/ready                       # {"status":"ready"...}
 curl -s localhost:8008/api/tools | python3 -m json.tool   # vina/hyde/flexx: available:true, license_ok:true
                                                             # (models[].chemairs_sascore: available:true if configured — see §6)
 $C exec app python scripts/verify_tools.py   # runs each REAL tool; FlexX shows SKIP only if not installed
-python scripts/run_campaign.py --base http://127.0.0.1:8008 --engine flexx --count 20 --label "server acceptance (FlexX)"
+python scripts/run_campaign.py --base http://127.0.0.1:8008 --engine hpsee --count 20 --label "server acceptance (HPSee)"
 python scripts/run_campaign.py --base http://127.0.0.1:8008 --engine vina  --count 20 --label "server acceptance (Vina)"
 ```
-Pass criteria: both campaigns reach `COMPLETE`; `scripts/verify_tools.py` shows PASS for Vina, FlexX, HYDE and ADMET
+Pass criteria: both campaigns reach `COMPLETE`; `scripts/verify_tools.py` shows PASS for Vina, HPSee, HYDE and ADMET
 (from a dev checkout, `pytest -m real tests/integration` is the same evidence); the SDF opens in RDKit/PyMOL with 3D poses.
 FlexX 6.5.3 was validated locally; a different FlexX build
 may name output poses differently (`science/engines/flexx.py::parse_flexx_output`).
@@ -151,6 +152,15 @@ If ChemAIRS becomes unreachable mid-deployment (network issue, revoked key, rate
 batch fails with the real error message attached (see the batch log in the UI) — it does **not** silently
 fall back to RDKit mid-campaign, so a run that was using ChemAIRS stays comparable throughout. Unset the
 two variables and restart to switch back to RDKit deliberately.
+
+## 6b. BioSolveIT HPSee (replaces local FlexX)
+
+Full runbook: [`docs/HPSEE.md`](HPSEE.md). Short version: deploy HPSee with BioSolveIT's installer (its own compose
+stack); upload the licence on its *Licenses* page; create a **dedicated non-admin HPSee user** and remove or
+re-password the default `admin`/`admin`; set `HPSEE_URL` (same host: `http://host.docker.internal:8080`),
+`HPSEE_USERNAME`, `HPSEE_PASSWORD` in `.env.prod`; `$C up -d app`; then `curl -s localhost:8008/api/hpsee/status`
+must show `authenticated: true` and the licensed workflows. For Chemical Space Docking, an HPSee admin uploads the
+`.space` file in HPSee, and users bring SeeSAR-exported `.flexx` + `.hydescorer` files.
 
 ## 7. Caddy (bundled reverse proxy, optional)
 

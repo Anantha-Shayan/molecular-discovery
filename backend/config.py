@@ -140,10 +140,24 @@ class Settings:
     chemairs_material_source: int   # 0 = all building blocks, 1 = available only
     chemairs_poll_interval_seconds: float
     chemairs_poll_timeout_seconds: float
+    # --- BioSolveIT HPSee (remote docking + Chemical Space Docking over its REST API)
+    hpsee_url: str | None             # e.g. http://hpsee-host:8080  (no trailing slash, no /api suffix)
+    hpsee_username: str | None
+    hpsee_password: str | None
+    hpsee_verify_tls: bool            # false only for an internal self-signed certificate
+    hpsee_request_timeout_seconds: float
+    hpsee_poll_interval_seconds: float
+    hpsee_workflow_timeout_seconds: int   # longest a single HPSee workflow may run before we give up on it
+    hpsee_max_fetch_entries: int      # cap on result entries downloaded from one HPSee result library
+    hpsee_max_definition_mb: int      # upload limit for SeeSAR .flexx / .hydescorer definition files
 
     @property
     def chemairs_configured(self) -> bool:
         return bool(self.chemairs_base_url and self.chemairs_api_key)
+
+    @property
+    def hpsee_configured(self) -> bool:
+        return bool(self.hpsee_url and self.hpsee_username and self.hpsee_password)
 
     @property
     def is_development(self) -> bool:
@@ -247,6 +261,15 @@ def load_settings() -> Settings:
         chemairs_material_source=1 if _int("CHEMAIRS_MATERIAL_SOURCE", 0) == 1 else 0,
         chemairs_poll_interval_seconds=max(1.0, _float("CHEMAIRS_POLL_INTERVAL_SECONDS", 3.0)),
         chemairs_poll_timeout_seconds=max(10.0, _float("CHEMAIRS_POLL_TIMEOUT_SECONDS", 300.0)),
+        hpsee_url=(_str("HPSEE_URL") or "").rstrip("/") or None,
+        hpsee_username=_str("HPSEE_USERNAME"),
+        hpsee_password=_str("HPSEE_PASSWORD"),
+        hpsee_verify_tls=_bool("HPSEE_VERIFY_TLS", True),
+        hpsee_request_timeout_seconds=max(5.0, _float("HPSEE_REQUEST_TIMEOUT_SECONDS", 60.0)),
+        hpsee_poll_interval_seconds=max(2.0, _float("HPSEE_POLL_INTERVAL_SECONDS", 10.0)),
+        hpsee_workflow_timeout_seconds=max(300, _int("HPSEE_WORKFLOW_TIMEOUT_SECONDS", 72 * 3600)),
+        hpsee_max_fetch_entries=max(100, min(50000, _int("HPSEE_MAX_FETCH_ENTRIES", 5000))),
+        hpsee_max_definition_mb=max(1, _int("HPSEE_MAX_DEFINITION_MB", 256)),
     )
 
 

@@ -296,8 +296,10 @@ def get_target_structure(target_id: str):
 
 
 from .api_jobs import router as jobs_router  # noqa: E402
+from .api_hpsee import router as hpsee_router  # noqa: E402
 
 app.include_router(jobs_router)
+app.include_router(hpsee_router)
 
 
 # ---------------------------------------------------------------------------

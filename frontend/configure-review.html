@@ -66,7 +66,7 @@
           <div id="manual-box" hidden class="mt-space-md p-space-sm bg-surface-container-low rounded space-y-space-sm">
             <p class="font-body-sm text-body-sm text-on-surface-variant">
               Enter the centre and edge lengths of a search box in ångström (Å), in the same coordinate frame as the structure file.
-              Manual boxes work with AutoDock Vina only, because HYDE and FlexX need a reference molecule to find the pocket.
+              Manual boxes work with AutoDock Vina only, because HYDE and FlexX (also when run on HPSee) need a reference molecule to find the pocket.
             </p>
             <div class="grid grid-cols-3 gap-space-sm font-mono-data text-mono-data">
               <label>Centre X<input id="bx" type="number" step="0.1" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
@@ -99,10 +99,71 @@
             </div>
           </div>
           <div id="engine-options" class="mt-space-md grid grid-cols-1 md:grid-cols-2 gap-space-sm"></div>
+          <div id="hpsee-status" hidden class="mt-space-sm p-space-sm rounded bg-surface-container-low font-body-sm text-body-sm"></div>
+          <div id="hpsee-modes" hidden class="mt-space-md">
+            <div class="font-label-caps text-label-caps text-outline uppercase">What should HPSee search?</div>
+            <div id="hpsee-mode-options" class="mt-space-xs grid grid-cols-1 md:grid-cols-2 gap-space-sm"></div>
+          </div>
+        </section>
+
+        <!-- 3b Chemical space (HPSee C-S-D only) -->
+        <section id="csd-section" hidden class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+          <div class="flex items-start gap-space-sm">
+            <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-low rounded">3</span>
+            <div>
+              <h2 class="font-headline-md text-headline-md text-on-surface">Chemical space</h2>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-space-2xs max-w-3xl">
+                A chemical space is a recipe book (building blocks plus reactions) describing far more molecules than could ever be listed.
+                HPSee never enumerates it. <strong class="text-on-surface">Anchoring</strong> first docks and scores the building blocks on
+                their own. <strong class="text-on-surface">You then review the best anchors</strong> and choose which to grow.
+                <strong class="text-on-surface">Extension</strong> builds only those anchors into full molecules of the space and docks them.
+                Spaces with three building blocks need a second review and extension round.
+              </p>
+            </div>
+          </div>
+          <div class="mt-space-md grid grid-cols-1 md:grid-cols-2 gap-space-sm font-mono-data text-mono-data">
+            <label class="md:col-span-2">Chemical Space on HPSee
+              <select id="cfg-space" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></select></label>
+          </div>
+          <p id="space-note" class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant"></p>
+
+          <div class="mt-space-md p-space-sm bg-surface-container-low rounded space-y-space-sm">
+            <div class="font-headline-sm text-headline-sm">SeeSAR definition files <span class="font-mono-sm text-mono-sm bg-warning-container text-warning px-space-xs rounded">required</span></div>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">
+              HPSee's Chemical Space Docking takes the protein, pocket and docking/scoring settings from two files exported from
+              <strong class="text-on-surface">SeeSAR's Docking mode</strong>: a docking definition (<code>.flexx</code>) and a scoring definition
+              (<code>.hydescorer</code>). They cannot be created here: the format belongs to BioSolveIT and is not documented.
+              Export them from the same structure you chose above, because HPSee uses the protein inside these files, not this page's.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm font-mono-data text-mono-data">
+              <label>Docking definition (.flexx)
+                <input id="def-flexx" type="file" accept=".flexx" class="mt-space-2xs w-full text-mono-sm"></label>
+              <label>Scoring definition (.hydescorer)
+                <input id="def-hyde" type="file" accept=".hydescorer" class="mt-space-2xs w-full text-mono-sm"></label>
+            </div>
+            <div id="def-msg" class="font-mono-sm text-mono-sm text-outline"></div>
+          </div>
+
+          <div class="mt-space-md grid grid-cols-1 md:grid-cols-2 gap-space-sm font-mono-data text-mono-data">
+            <label>Anchoring filter (optional)
+              <input id="cfg-anchor-filter" type="text" placeholder="Properties.BIOSOLVEIT.NUMBER_OF_HEAVY_ATOMS <= 20" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+            <label>Extension filter (optional)
+              <input id="cfg-ext-filter" type="text" placeholder="Properties.BIOSOLVEIT.MOLECULAR_WEIGHT <= 500" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+            <label>Best products to evaluate further
+              <input id="cfg-max-products" type="number" min="1" max="2000" value="500" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-low rounded"></label>
+          </div>
+          <p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">
+            Filters are passed to HPSee unchanged, in its own syntax: <code>Properties.&lt;NAME&gt; &lt;op&gt; &lt;value&gt;</code>, combined with
+            <code>AND</code>/<code>OR</code> and parentheses; operators <code>= != &lt; &gt; &lt;= &gt;=</code>. The anchoring filter decides which building blocks
+            are docked; the extension filter is applied to the grown molecules. "Best products" is how many complete products, ranked by HYDE's estimated
+            affinity, go on to synthetic-accessibility and ADMET screening.
+          </p>
+          <button type="button" id="props-toggle" class="mt-space-xs font-mono-sm text-mono-sm text-primary underline">Show the properties HPSee can filter on</button>
+          <div id="props-list" hidden class="mt-space-xs max-h-56 overflow-y-auto p-space-sm bg-surface-container-low rounded font-mono-sm text-mono-sm space-y-space-2xs"></div>
         </section>
 
         <!-- 3 Library -->
-        <section class="bg-surface-container-lowest p-space-md rounded shadow-sm">
+        <section id="library-section" class="bg-surface-container-lowest p-space-md rounded shadow-sm">
           <div class="flex items-start gap-space-sm">
             <span class="font-mono-data text-mono-data text-primary font-semibold px-space-xs py-space-2xs bg-surface-container-low rounded">3</span>
             <div>
@@ -203,7 +264,7 @@
             </div>
           </div>
           <div class="mt-space-md space-y-space-sm">
-            <div class="p-space-sm bg-surface-container-low rounded space-y-space-sm">
+            <div id="dock-settings" class="p-space-sm bg-surface-container-low rounded space-y-space-sm">
               <div>
                 <div class="font-headline-sm text-headline-sm">Docking settings <span id="dock-engine-chip" class="font-mono-sm text-mono-sm bg-surface-container-high px-space-xs rounded"></span></div>
                 <p id="dock-help" class="font-body-sm text-body-sm text-on-surface-variant"></p>
@@ -219,9 +280,9 @@
                   <select id="cfg-clash" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded">
                     <option value="0" selected>Standard</option><option value="1">Medium</option><option value="2">High</option>
                   </select></label>
-                <label>Poses kept per molecule
+                <label id="w-modes">Poses kept per molecule
                   <input id="cfg-modes" type="number" min="1" max="10" value="5" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded"></label>
-                <label>Keep best
+                <label id="w-keep">Keep best
                   <select id="cfg-keep" class="mt-space-2xs w-full h-8 px-space-sm bg-surface-container-lowest rounded">
                     <option value="0.25">25% by docking score</option><option value="0.5">50% by docking score</option>
                     <option value="0.75">75% by docking score</option><option value="1" selected>All (no cut)</option>
@@ -306,7 +367,10 @@
   const targetId = params.get("target");
   const chainParam = params.get("chain");
   let target = null, sites = [], tools = null;
-  const state = { siteKey: null, manual: null, engine: "vina" };
+  const state = { siteKey: null, manual: null, engine: "vina", hpseeMode: "library", spaces: null, spacesError: null,
+                  defs: { flexx: null, hydescorer: null } };
+  const csd = () => state.engine === "hpsee" && state.hpseeMode === "chemical_space";
+  const hp = () => (tools && tools.services && tools.services.hpsee) || { configured: false, reason: "Status unavailable." };
 
   // Rough speed measured on the development machine (8 CPU threads); shown only as an estimate.
   const SECONDS_PER_MOLECULE = { 4: 6, 8: 11, 16: 22 };
@@ -348,6 +412,13 @@
       enable_affinity: mock, enable_kinetics: mock,
       rank_by: document.getElementById("cfg-rank").value,
       enable_grow: document.getElementById("cfg-grow").checked,
+      hpsee_mode: state.hpseeMode,
+      hpsee_space_id: csd() ? document.getElementById("cfg-space").value || null : null,
+      hpsee_docking_definition: csd() && state.defs.flexx ? state.defs.flexx.definition_id : null,
+      hpsee_scoring_definition: csd() && state.defs.hydescorer ? state.defs.hydescorer.definition_id : null,
+      hpsee_anchor_filters: csd() ? document.getElementById("cfg-anchor-filter").value.trim() : "",
+      hpsee_extension_filters: csd() ? document.getElementById("cfg-ext-filter").value.trim() : "",
+      hpsee_max_products: Number(document.getElementById("cfg-max-products").value) || 500,
     };
   }
 
@@ -365,8 +436,11 @@
     const html = sites.map((s) => card(s.key, state.siteKey === s.key,
       `${esc(s.het_name)} <span class="font-mono-sm text-outline">chain ${esc(s.chain)} #${esc(s.resseq)}</span>`, chip(`${s.heavy_atoms} atoms`, ""),
       `Pocket around the bound molecule. Search box ${s.box.size.join(" × ")} Å.`, false, "site")).join("");
+    const manualOk = state.engine === "vina" || csd();
     document.getElementById("site-options").innerHTML = html +
-      card("manual", state.siteKey === "manual", "Draw my own box", chip("Vina only", ""), "Enter coordinates yourself.", false, "site");
+      card("manual", state.siteKey === "manual", "Draw my own box", chip(csd() ? "viewer only" : "Vina only", ""),
+        csd() ? "Enter coordinates yourself. In Chemical Space Docking the pocket comes from the SeeSAR file; this box is only used for display and analogue growing."
+              : "Enter coordinates yourself.", !manualOk, "site");
     document.getElementById("no-sites").hidden = sites.length > 0;
     document.getElementById("manual-box").hidden = state.siteKey !== "manual";
     document.querySelectorAll('input[name="site"]').forEach((el) => el.addEventListener("change", () => {
@@ -374,29 +448,119 @@
     }));
   }
 
+  function hpseeChip(h) {
+    if (!h.configured) return chip("not configured", "bad");
+    if (!h.reachable) return chip("unreachable", "bad");
+    if (!h.authenticated) return chip("login failed", "bad");
+    if (!h.available) return chip(`v${esc(h.version || "?")} · not licensed`, "bad");
+    return chip(`connected · v${esc(h.version || "?")}`, "ok");
+  }
+
   function renderEngines() {
-    const v = tools.tools.vina, f = tools.tools.flexx;
+    const v = tools.tools.vina, h = hp();
     document.getElementById("engine-options").innerHTML =
       card("vina", state.engine === "vina", "AutoDock Vina", chip(v.available ? `ready · v${esc(v.version)}` : "not installed", v.available ? "ok" : "bad"),
-        "Open-source docking program. Score in kcal/mol (more negative = better predicted fit).", !v.available, "engine") +
-      card("flexx", state.engine === "flexx", "BioSolveIT FlexX", chip(f.available ? `ready · v${esc(f.version)}` : "not installed", f.available ? "ok" : "bad"),
-        f.available ? "Very fast commercial docking. Needs a pocket defined by a bound molecule."
-          : esc(f.reason || "Not installed on this server."), !f.available, "engine");
+        "Open-source docking program, runs on this server. Score in kcal/mol (more negative = better predicted fit).", !v.available, "engine") +
+      card("hpsee", state.engine === "hpsee", "BioSolveIT HPSee", hpseeChip(h),
+        h.available ? "BioSolveIT's compute server: FlexX docking and HYDE scoring run there, and it can search whole chemical spaces (Chemical Space Docking)."
+          : esc(h.reason || "Not available."), !h.available, "engine");
     document.querySelectorAll('input[name="engine"]').forEach((el) => el.addEventListener("change", () => { state.engine = el.value; sync(); }));
+    const st = document.getElementById("hpsee-status");
+    st.hidden = state.engine !== "hpsee";
+    if (state.engine === "hpsee") {
+      const lic = Object.entries(h.licenses || {}).filter(([k]) => ["Docking", "Scoring", "ChemicalSpaceDockingAnchoring", "ChemicalSpaceDockingExtension"].includes(k));
+      st.innerHTML = `<div class="flex flex-wrap gap-space-xs items-center"><span class="text-outline">Licensed on HPSee (its own answer):</span>${lic.map(([k, x]) =>
+        chip(`${esc(k.replace("ChemicalSpaceDocking", "C-S-D "))}${x.expires ? " · until " + esc(x.expires) : ""}`, x.licensed ? "ok" : "bad")).join(" ")}</div>`;
+    }
+    document.getElementById("hpsee-modes").hidden = state.engine !== "hpsee";
+    if (state.engine === "hpsee") {
+      document.getElementById("hpsee-mode-options").innerHTML =
+        card("library", state.hpseeMode === "library", "Dock a list of molecules", chip(h.library_docking_available ? "licensed" : "not licensed", h.library_docking_available ? "ok" : "bad"),
+          "The molecules from step 3 (ZINC, built-in or your own) are docked with FlexX and scored with HYDE on HPSee. Same funnel as Vina, run remotely.",
+          !h.library_docking_available, "hmode") +
+        card("chemical_space", state.hpseeMode === "chemical_space", "Chemical Space Docking", chip(h.chemical_space_docking_available ? "licensed" : "not licensed", h.chemical_space_docking_available ? "ok" : "bad"),
+          "Searches a whole chemical space through anchoring and extension, with your review in between. Needs a space on HPSee and two SeeSAR files.",
+          !h.chemical_space_docking_available, "hmode");
+      document.querySelectorAll('input[name="hmode"]').forEach((el) => el.addEventListener("change", () => { state.hpseeMode = el.value; sync(); }));
+    }
+  }
+
+  async function loadSpaces() {
+    if (state.spaces !== null || state.engine !== "hpsee") return;
+    state.spaces = [];
+    try { state.spaces = (await API.get("/api/hpsee/spaces")).spaces; } catch (e) { state.spacesError = e.message; }
+    renderSpaces();
+  }
+
+  function renderSpaces() {
+    const sel = document.getElementById("cfg-space"), note = document.getElementById("space-note");
+    const prev = sel.value;
+    const sp = state.spaces || [];
+    sel.innerHTML = sp.length ? sp.map((x) => `<option value="${esc(x.space_id)}" ${x.ready ? "" : "disabled"}>${esc(x.name)}${x.synthons ? ` — ${fmt.int(x.synthons)} synthons` : ""}${x.ready ? "" : ` (not ready: ${esc(x.preparation_status || "preparing")})`}</option>`).join("")
+      : '<option value="">No chemical space available</option>';
+    if (prev && sp.some((x) => x.space_id === prev)) sel.value = prev;
+    const cur = sp.find((x) => x.space_id === sel.value);
+    note.innerHTML = state.spacesError ? `<span class="text-error">Could not list spaces: ${esc(state.spacesError)}</span>`
+      : !sp.length ? "No Chemical Space has been uploaded to HPSee yet. An HPSee administrator uploads <code>.space</code> files on the Spaces page of the HPSee admin dashboard (they are prepared automatically, which needs a licence). Reload this page afterwards."
+      : cur ? esc(cur.description || "") : "";
+    renderReview();
+  }
+
+  async function uploadDefinition(kind, input) {
+    const msg = document.getElementById("def-msg");
+    const file = input.files[0];
+    state.defs[kind] = null;
+    if (!file) return renderDefs();
+    msg.textContent = `Uploading ${file.name}…`;
+    try {
+      const data = new FormData(); data.append("kind", kind); data.append("file", file);
+      state.defs[kind] = await API.postForm("/api/hpsee/definitions", data);
+    } catch (e) { input.value = ""; msg.innerHTML = `<span class="text-error">${esc(e.message)}</span>`; return; }
+    renderDefs();
+  }
+  function renderDefs() {
+    const d = state.defs, part = (k, label) => d[k] ? `${label}: ${esc(d[k].filename)} (${fmt.bytes(d[k].size_bytes)}, sha256 ${esc(d[k].sha256.slice(0, 12))}…)` : `${label}: not uploaded`;
+    document.getElementById("def-msg").innerHTML = `${part("flexx", "docking")}<br>${part("hydescorer", "scoring")}`;
+    renderReview();
+  }
+
+  async function loadFilterProps() {
+    const box = document.getElementById("props-list");
+    box.hidden = !box.hidden;
+    if (box.hidden || box.dataset.loaded) return;
+    box.textContent = "Loading from HPSee…";
+    try {
+      const { properties } = await API.get("/api/hpsee/filter-properties");
+      box.innerHTML = properties.map((x) => `<div><span class="text-on-surface font-semibold">Properties.${esc(x.name)}</span> <span class="text-outline">${esc(x.description || "")}${x.range ? " · " + esc(x.range) : ""}</span></div>`).join("");
+      box.dataset.loaded = "1";
+    } catch (e) { box.innerHTML = `<span class="text-error">${esc(e.message)}</span>`; }
   }
 
   function sync() {
+    const h = hp();
+    if (state.engine === "hpsee" && !h.available) state.engine = "vina";
+    if (state.engine === "hpsee" && state.hpseeMode === "chemical_space" && !h.chemical_space_docking_available) state.hpseeMode = "library";
+    if (state.engine === "hpsee" && state.hpseeMode === "library" && !h.library_docking_available) state.hpseeMode = "chemical_space";
+    if (state.siteKey === "manual" && !(state.engine === "vina" || csd()) && sites.length) state.siteKey = sites[0].key;
     const manual = state.siteKey === "manual";
+    const remote = state.engine === "hpsee";
     const hyde = document.getElementById("cfg-hyde");
-    const hydeOk = tools.tools.hydescorer.available && !manual;
+    const hydeAvail = remote ? !!h.scoring_available : tools.tools.hydescorer.available;
+    const hydeOk = hydeAvail && !manual && !csd();
     hyde.disabled = !hydeOk;
     if (!hydeOk) hyde.checked = false;
-    document.getElementById("hyde-note").textContent = !tools.tools.hydescorer.available
-      ? "HYDE is not installed on this server." : manual ? "HYDE needs a pocket defined by a bound molecule, so it is off for a manual box."
-      : "A second, physics-based opinion on each pose that accounts for the energy cost of removing water. It improves the ranking.";
+    document.getElementById("hyde-note").textContent = csd()
+      ? "Scored by HPSee during anchoring and extension, using your SeeSAR scoring definition. No separate re-scoring step."
+      : !hydeAvail ? (remote ? "HYDE scoring is not licensed on HPSee." : "HYDE is not installed on this server.")
+      : manual ? "HYDE needs a pocket defined by a bound molecule, so it is off for a manual box."
+      : (remote ? "Runs on HPSee. " : "") + "A second, physics-based opinion on each pose that accounts for the energy cost of removing water. It improves the ranking.";
+    document.getElementById("csd-section").hidden = !csd();
+    document.getElementById("library-section").hidden = csd();
+    if (remote) loadSpaces();
     const rank = document.getElementById("cfg-rank");
-    rank.querySelector('option[value="hyde"]').disabled = !hyde.checked;
-    if (!hyde.checked && rank.value === "hyde") rank.value = "docking";
+    rank.querySelector('option[value="hyde"]').textContent = remote ? "HYDE estimated affinity" : "HYDE score";
+    rank.querySelector('option[value="hyde"]').disabled = !(hyde.checked || csd());
+    if (!(hyde.checked || csd()) && rank.value === "hyde") rank.value = "docking";
     document.getElementById("upload-row").hidden = document.getElementById("cfg-source").value !== "upload";
     document.getElementById("lib-note").textContent = {
       zinc20: "Streams a reproducible sample of the ZINC20 catalogue; the same seed gives the same molecules. Needs internet access.",
@@ -406,11 +570,14 @@
     const vina = state.engine === "vina";
     document.getElementById("w-effort").hidden = !vina;
     document.getElementById("w-exh").hidden = !vina || document.getElementById("cfg-effort").value !== "custom";
-    document.getElementById("w-clash").hidden = vina;
-    document.getElementById("dock-engine-chip").textContent = vina ? "AutoDock Vina" : "BioSolveIT FlexX";
+    document.getElementById("w-clash").hidden = true;          // FlexX option; HPSee's docking API takes no such setting
+    document.getElementById("w-modes").hidden = !vina;         // HPSee returns its own fixed number of poses
+    document.getElementById("w-keep").hidden = csd();
+    document.getElementById("dock-settings").hidden = csd();
+    document.getElementById("dock-engine-chip").textContent = vina ? "AutoDock Vina" : "FlexX on HPSee";
     document.getElementById("dock-help").textContent = vina
       ? "Search effort is how many random starting positions Vina tries per molecule: higher finds better poses but takes longer. Poses kept is how many alternative placements are saved for each molecule."
-      : "FlexX builds each molecule piece by piece inside the pocket. Clash tolerance sets how much overlap with the protein is accepted (Standard is strictest). Poses kept is how many alternative placements FlexX returns per molecule; HYDE re-scores all of them.";
+      : "HPSee docks with FlexX using its own settings. Its docking request has no effort or pose options, so none are shown. It returns several poses per molecule and HYDE picks the best. Keep best is this platform's own cut on the docking score.";
     const src = document.getElementById("cfg-source").value;
     document.getElementById("source-help").innerHTML = {
       zinc20: "<strong class=\"text-on-surface\">ZINC20:</strong> a public catalogue of purchasable compounds from the University of California. Real, commercially available molecules, so a hit can be ordered and tested. Sampled at the start of each run from a cached download (details below).",
@@ -432,9 +599,15 @@
   function renderReview() {
     const c = cfg(); const rows = [];
     const row = (a, b) => `<div class="flex justify-between gap-space-sm bg-surface-container-low p-space-xs rounded"><span class="text-outline">${a}</span><span class="text-on-surface text-right">${b}</span></div>`;
-    rows.push(row("Pocket", c.site.mode === "ligand" ? esc(c.site.reference) : "manual box"));
-    rows.push(row("Docking", c.engine === "vina" ? "AutoDock Vina" : "BioSolveIT FlexX"));
-    rows.push(row("Molecules", `${c.library_count} · ${c.library_source}`));
+    rows.push(row("Pocket", csd() ? "from the SeeSAR docking definition" : c.site.mode === "ligand" ? esc(c.site.reference) : "manual box"));
+    rows.push(row("Docking", c.engine === "vina" ? "AutoDock Vina" : csd() ? "HPSee Chemical Space Docking" : "FlexX on HPSee"));
+    if (csd()) {
+      const sp = (state.spaces || []).find((x) => x.space_id === c.hpsee_space_id);
+      rows.push(row("Chemical space", sp ? esc(sp.name) : '<span class="text-error">none chosen</span>'));
+      rows.push(row("SeeSAR files", state.defs.flexx && state.defs.hydescorer ? "both uploaded" : '<span class="text-error">missing</span>'));
+      rows.push(row("Anchor review", "required before extension"));
+      rows.push(row("Products evaluated", `best ${c.hpsee_max_products}`));
+    } else rows.push(row("Molecules", `${c.library_count} · ${c.library_source}`));
     const FILTER_ID_TO_KEY = {
       "flt-min-heavy": "filter_min_heavy", "flt-max-heavy": "filter_max_heavy",
       "flt-min-mw": "filter_min_mw", "flt-max-mw": "filter_max_mw",
@@ -444,17 +617,22 @@
     };
     const filtersChanged = Object.entries(FILTER_PRESETS.default).some(
       ([id, v]) => String(c[FILTER_ID_TO_KEY[id]]) !== String(v));
-    rows.push(row("Property filters", filtersChanged
+    if (!csd()) rows.push(row("Property filters", filtersChanged
       ? `custom (${c.filter_min_heavy}-${c.filter_max_heavy} atoms, MW ${c.filter_min_mw}-${c.filter_max_mw}, logP ${c.filter_min_logp}-${c.filter_max_logp}, ${c.filter_reactivity})`
       : "default"));
-    rows.push(row("Docking cut", c.dock_keep_fraction === 1 ? "none" : `best ${Math.round(c.dock_keep_fraction * 100)}%`));
-    rows.push(row("HYDE", c.enable_hyde ? "on" : "off"));
+    if (!csd()) rows.push(row("Docking cut", c.dock_keep_fraction === 1 ? "none" : `best ${Math.round(c.dock_keep_fraction * 100)}%`));
+    rows.push(row("HYDE", csd() ? "by HPSee" : c.enable_hyde ? (c.engine === "hpsee" ? "on (HPSee)" : "on") : "off"));
     rows.push(row("SA limit", `≤ ${c.sa_threshold}`));
     rows.push(row("ADMET", c.enable_admet ? (c.strict_admet_gate ? "no alerts" : "≤ 1 alert") : "off"));
     rows.push(row("New analogues", c.enable_grow ? "FastGrow, top 3" : "off"));
-    rows.push(row("Ranked by", { hyde: "HYDE score", docking: "docking score", sa: "SA score" }[c.rank_by]));
+    rows.push(row("Ranked by", { hyde: c.engine === "hpsee" ? "HYDE estimated affinity" : "HYDE score", docking: "docking score", sa: "SA score" }[c.rank_by]));
     document.getElementById("review").innerHTML = rows.join("");
-    const per = c.engine === "vina" ? Math.max(3, c.exhaustiveness * 1.4) : 13;
+    if (c.engine === "hpsee") {
+      document.getElementById("estimate").innerHTML = `<strong class="text-on-surface">No time estimate.</strong> The work runs on the HPSee server, so it depends on HPSee's queue and its number of workers, which this platform cannot see in advance.
+        On the next screen, status and progress come directly from HPSee, per task. HPSee reports a task's progress when it finishes, so the bar can jump from 0 to 100.${csd() ? " The campaign stops after anchoring until you have reviewed the anchors." : ""}`;
+      return;
+    }
+    const per = Math.max(3, c.exhaustiveness * 1.4);
     const secs = per * c.library_count;
     const t = secs < 90 ? `${Math.round(secs)} s` : `${Math.round(secs / 60)} min`;
     document.getElementById("estimate").innerHTML = `<strong class="text-on-surface">Rough time for docking: about ${t}.</strong> Estimated from speed measured on the development computer; this server may differ. Progress on the next screen is real, not estimated.`;
@@ -470,6 +648,12 @@
     } catch (e) { state.manual = null; msg.className = "font-mono-sm text-mono-sm text-error"; msg.textContent = e.message; }
     renderReview();
   });
+
+  document.getElementById("def-flexx").addEventListener("change", (e) => uploadDefinition("flexx", e.target));
+  document.getElementById("def-hyde").addEventListener("change", (e) => uploadDefinition("hydescorer", e.target));
+  document.getElementById("props-toggle").addEventListener("click", loadFilterProps);
+  ["cfg-space", "cfg-anchor-filter", "cfg-ext-filter", "cfg-max-products"].forEach((id) => {
+    const el = document.getElementById(id); el.addEventListener("change", () => { renderSpaces(); }); el.addEventListener("input", renderReview); });
 
   ["cfg-source", "cfg-count", "cfg-seed", "cfg-effort", "cfg-exh", "cfg-clash", "cfg-modes", "cfg-keep", "cfg-hyde", "cfg-sa", "cfg-admet", "cfg-strict", "cfg-rank", "cfg-mock", "cfg-chain", "cfg-grow",
    "flt-min-heavy", "flt-max-heavy", "flt-min-mw", "flt-max-mw", "flt-min-logp", "flt-max-logp", "flt-max-rot", "flt-max-tpsa", "flt-max-hbd", "flt-max-hba", "flt-reactivity"]
@@ -497,6 +681,8 @@
   document.getElementById("start-btn").addEventListener("click", async () => {
     clearError("start-error");
     if (state.siteKey === "manual" && !state.manual) return showError("start-error", "Check the manual box first.");
+    if (csd() && !(state.defs.flexx && state.defs.hydescorer)) return showError("start-error", "Upload both SeeSAR definition files (.flexx and .hydescorer) first.");
+    if (csd() && !document.getElementById("cfg-space").value) return showError("start-error", "Choose a Chemical Space. If none is listed, one must first be uploaded to HPSee.");
     const btn = document.getElementById("start-btn"); btn.disabled = true;
     document.getElementById("start-label").textContent = "Starting…";
     try {
@@ -504,7 +690,7 @@
       window.location.href = `dashboard.html?job=${job.job_id}`;
     } catch (e) {
       btn.disabled = false; document.getElementById("start-label").textContent = "Start campaign";
-      showError("start-error", e.message);
+      showError("start-error", e.message, [], "Could not start the campaign");
     }
   });
 
@@ -527,9 +713,10 @@
       const siteInfo = await API.sites(targetId);
       sites = siteInfo.sites;
       state.siteKey = sites.length ? sites[0].key : "manual";
-      state.engine = tools.tools.vina.available ? "vina" : (tools.tools.flexx.available ? "flexx" : "vina");
-      const wanted = params.get("engine");   // e.g. ?engine=flexx preselects it
-      if (wanted && tools.tools[wanted] && tools.tools[wanted].available && ["vina", "flexx"].includes(wanted)) state.engine = wanted;
+      state.engine = tools.tools.vina.available ? "vina" : (hp().available ? "hpsee" : "vina");
+      const wanted = params.get("engine");   // e.g. ?engine=hpsee preselects it
+      if (wanted === "hpsee" && hp().available) state.engine = "hpsee";
+      if (params.get("mode") === "chemical_space") state.hpseeMode = "chemical_space";
       const chains = target.chains || [];
       if (chains.length > 1) {
         document.getElementById("chain-row").hidden = false;

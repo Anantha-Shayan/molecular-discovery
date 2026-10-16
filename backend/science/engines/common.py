@@ -81,3 +81,25 @@ def mol_to_sdf(mol: Chem.Mol, name: str, props: dict | None = None) -> str:
     w.write(mol)
     w.close()
     return buf.getvalue()
+
+
+def write_3d_library(items: list[DockInput], path: Path, seed: int) -> tuple[dict[str, str], dict[str, str]]:
+    """Write one RDKit 3D start geometry per molecule, titled with its display id.
+
+    FlexX (local or on HPSee) skips molecules without 3D coordinates, so every
+    batch is embedded first. Returns ({display_id: molecule_id}, {molecule_id: error}).
+    """
+    name_to_id: dict[str, str] = {}
+    failed: dict[str, str] = {}
+    w = Chem.SDWriter(str(path))
+    for it in items:
+        try:
+            mol = embed_3d(it.smiles, seed)
+        except LigandPrepError as exc:
+            failed[it.molecule_id] = str(exc)
+            continue
+        mol.SetProp("_Name", it.display_id)
+        w.write(mol)
+        name_to_id[it.display_id] = it.molecule_id
+    w.close()
+    return name_to_id, failed
