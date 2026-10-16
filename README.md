@@ -22,7 +22,8 @@ Deployment: company server [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) · VPS [`d
 | HYDE re-scoring | **real** | `hydescorer` 2.5.3 locally (Vina campaigns) or HYDE on HPSee (HPSee campaigns), vendor tags parsed |
 | Synthetic accessibility | **real** | RDKit SAscore |
 | ADMET | **real model** | ADMET-AI (Chemprop-RDKit, TDC data), CPU |
-| Binding affinity, unbinding kinetics (Koffee) | **placeholder, deferred** | values labelled "mocked", never used for filtering/ranking |
+| Binding affinity (Koffee) | **real, optional** | Kvantify Koffee Binding Affinity Docker assessment of validated completed docking poses; separate from filtering/ranking |
+| Unbinding kinetics (Koffee) | **placeholder, deferred** | values labelled "mocked", never used for filtering/ranking |
 | FastGrow analogue generation | **real, optional** | FastGrow 1.6.3 grows fragments from the top candidates; results are *generated suggestions*, listed separately |
 
 Scores are never combined: docking, HYDE, SA and ADMET are separate, labelled columns; the ranking

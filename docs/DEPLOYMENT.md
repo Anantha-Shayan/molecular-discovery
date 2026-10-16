@@ -15,7 +15,8 @@ only be completed on the server are marked **[SERVER ONLY]**.
 | BioSolveIT FlexX / HYDE / FastGrow | vendor download (login on biosolveit.de) | **no** (vendor licence) |
 | BioSolveIT HPSee (FlexX, HYDE, Chemical Space Docking) | its own Docker stack, reached over HTTP (`HPSEE_URL`) | **no** (separate service) |
 | BioSolveIT licence file | vendor | **never** (bind-mounted at runtime) |
-| Koffee (affinity, kinetics) | deferred | stages are labelled placeholders |
+| Kvantify Koffee Binding Affinity | vendor image + optional license | **no** (image supplied separately; license bind-mounted read-only) |
+| Koffee unbinding kinetics | deferred | placeholder values only |
 
 ## 1. Prerequisites (verify before changing anything)
 
@@ -69,6 +70,10 @@ volume (`/var/lib/mdp`: `runs/<campaign>/…`, uploaded structures, ZINC cache).
 Mount points (see `docker-compose.prod.yml`): `/opt/molecular-tools` and `/etc/biosolveit` are mounted
 **read-only**; on SELinux hosts (Fedora/RHEL, `getenforce` = Enforcing) set `MOUNT_OPTS=ro,z` in `.env.prod`, otherwise the container
 gets `Permission denied` (this happened in local testing); override the host paths with `TOOLS_HOST_DIR` / `LICENSE_HOST_DIR` in `.env.prod`.
+For optional Koffee Binding Affinity, set `KOFFEE_LICENSE_HOST_DIR` to a host directory containing the Kvantify
+license and `KOFFEE_LICENSE_FILENAME` to its filename in `.env.prod`. Compose mounts it read-only at
+`/etc/kvantify`; the app uses `/etc/kvantify/<filename>`. The Koffee image must also be available to Docker
+as `KOFFEE_IMAGE`. Keep the license separate from the BioSolveIT license; details are in `docs/KOFFEE.md`.
 
 Without Docker: `python -m venv .venv && .venv/bin/pip install --extra-index-url
 https://download.pytorch.org/whl/cpu -c constraints.txt -r requirements.txt`, put the variables from

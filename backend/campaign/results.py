@@ -88,6 +88,9 @@ def flat_metrics(by_stage: dict[str, dict]) -> dict:
         "admet_tox_flags": ",".join(ad.get("tox_flags", [])) if ad else None,
         "admet_herg": ad.get("values", {}).get("hERG") if ad else None,
         "admet_qed": ad.get("values", {}).get("QED") if ad else None,
+        "koffee_score_kcal_mol": aff.get("score_kcal_mol"),
+        "koffee_ligand_strain_kcal_mol": aff.get("ligand_strain_kcal_mol"),
+        "koffee_strain_included_in_score": aff.get("strain_included_in_score"),
         "affinity_kd_nm_MOCKED": aff.get("kd_nm"),
         "koff_per_s_MOCKED": kin.get("koff_per_s"),
         "residence_time_min_MOCKED": kin.get("residence_time_min"),
@@ -115,8 +118,8 @@ def sdf_record(job_dir: Path, mol: models.Molecule, by_stage: dict[str, dict], r
     if ad:
         props["ADMET_MODEL"] = ad.get("model")
     props["PROVENANCE"] = (
-        "Docking, HYDE, SA and ADMET values are real tool/model outputs and are NOT comparable "
-        "with each other. Fields ending _MOCKED are placeholders, not predictions."
+        "Docking, HYDE, SA, ADMET and Koffee values are distinct model outputs and are NOT comparable "
+        "or combined. Koffee values are predicted scores, not measured affinities. Fields ending _MOCKED are placeholders."
     )
     if pose_rel:
         recs = sdflib.parse_sdf((job_dir / pose_rel).read_text())

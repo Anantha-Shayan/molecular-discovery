@@ -8,6 +8,7 @@ from backend import config
 ENV_KEYS = (
     "APP_ENV", "DATABASE_URL", "DATA_DIR", "LOG_LEVEL", "CORS_ORIGINS", "PORT",
     "MAX_UPLOAD_MB", "ENABLE_API_DOCS", "RUN_MIGRATIONS",
+    "KOFFEE_PROTEIN_PREPARATION_MODE", "KOFFEE_WORK_DIR", "KOFFEE_OPTIMIZATION_LEVEL",
 )
 
 
@@ -110,3 +111,13 @@ def test_safe_database_url_property_never_contains_the_password(clean_env):
     settings = config.load_settings()
     assert "hunter2" not in settings.safe_database_url
     assert "hunter2" in settings.database_url  # the real one is still usable
+
+
+def test_koffee_configuration_is_validated(clean_env):
+    clean_env.setenv("KOFFEE_PROTEIN_PREPARATION_MODE", "invented")
+    with pytest.raises(config.ConfigError, match="KOFFEE_PROTEIN_PREPARATION_MODE"):
+        config.load_settings()
+    clean_env.setenv("KOFFEE_PROTEIN_PREPARATION_MODE", "remove_non_protein")
+    clean_env.setenv("KOFFEE_WORK_DIR", "/tmp/outside-data")
+    with pytest.raises(config.ConfigError, match="KOFFEE_WORK_DIR"):
+        config.load_settings()

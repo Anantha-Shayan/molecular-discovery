@@ -330,11 +330,11 @@
               </div>
               <label class="flex items-center gap-space-xs shrink-0"><input id="cfg-grow" type="checkbox" class="w-4 h-4"><span class="font-mono-sm text-mono-sm">on</span></label>
             </div>
-            <div class="p-space-sm bg-surface-container rounded border-l-2 border-outline-variant">
-              <div class="font-headline-sm text-headline-sm flex items-center gap-space-xs">Binding affinity and unbinding kinetics (Koffee)
-                <span class="font-mono-sm text-mono-sm bg-surface-container-high px-space-xs rounded">placeholder</span></div>
-              <p class="font-body-sm text-body-sm text-on-surface-variant">The Koffee tools are not connected yet. If left on, these steps add clearly marked placeholder values that never affect which molecules pass or how they are ranked.</p>
-              <label class="mt-space-xs flex items-center gap-space-xs font-body-sm text-body-sm"><input id="cfg-mock" type="checkbox" checked class="w-4 h-4"> Include placeholder columns</label>
+            <div class="p-space-sm bg-surface-container rounded border-l-2 border-primary">
+              <div class="font-headline-sm text-headline-sm">Koffee Binding Affinity <span class="font-mono-sm text-mono-sm bg-secondary-container/60 px-space-xs rounded">downstream assessment</span></div>
+              <p class="font-body-sm text-body-sm text-on-surface-variant">Scores completed docked poses with Kvantify Koffee. Lower, more-negative kcal/mol scores indicate stronger predicted binding within a comparable series; they are model predictions, not measured affinities. This never changes docking, filters, or ranking.</p>
+              <label class="mt-space-xs flex items-center gap-space-xs font-body-sm text-body-sm"><input id="cfg-affinity" type="checkbox" class="w-4 h-4"> Run Koffee on eligible completed poses</label>
+              <label class="mt-space-xs flex items-center gap-space-xs font-body-sm text-body-sm"><input id="cfg-koffee-strain" type="checkbox" class="w-4 h-4"> Include ligand strain in reported score</label>
             </div>
           </div>
         </section>
@@ -379,7 +379,6 @@
     const site = state.siteKey === "manual"
       ? { mode: "manual", center: state.manual.center, size: state.manual.size }
       : { mode: "ligand", reference: state.siteKey, padding: 6 };
-    const mock = document.getElementById("cfg-mock").checked;
     return {
       target_id: targetId,
       chain: document.getElementById("cfg-chain").value || chainParam || null,
@@ -409,7 +408,9 @@
       sa_threshold: Number(document.getElementById("cfg-sa").value),
       enable_admet: document.getElementById("cfg-admet").checked,
       strict_admet_gate: document.getElementById("cfg-strict").checked,
-      enable_affinity: mock, enable_kinetics: mock,
+      enable_affinity: document.getElementById("cfg-affinity").checked,
+      koffee_ligand_strain_in_score: document.getElementById("cfg-koffee-strain").checked,
+      enable_kinetics: false,
       rank_by: document.getElementById("cfg-rank").value,
       enable_grow: document.getElementById("cfg-grow").checked,
       hpsee_mode: state.hpseeMode,
@@ -655,7 +656,7 @@
   ["cfg-space", "cfg-anchor-filter", "cfg-ext-filter", "cfg-max-products"].forEach((id) => {
     const el = document.getElementById(id); el.addEventListener("change", () => { renderSpaces(); }); el.addEventListener("input", renderReview); });
 
-  ["cfg-source", "cfg-count", "cfg-seed", "cfg-effort", "cfg-exh", "cfg-clash", "cfg-modes", "cfg-keep", "cfg-hyde", "cfg-sa", "cfg-admet", "cfg-strict", "cfg-rank", "cfg-mock", "cfg-chain", "cfg-grow",
+  ["cfg-source", "cfg-count", "cfg-seed", "cfg-effort", "cfg-exh", "cfg-clash", "cfg-modes", "cfg-keep", "cfg-hyde", "cfg-sa", "cfg-admet", "cfg-strict", "cfg-rank", "cfg-affinity", "cfg-koffee-strain", "cfg-chain", "cfg-grow",
    "flt-min-heavy", "flt-max-heavy", "flt-min-mw", "flt-max-mw", "flt-min-logp", "flt-max-logp", "flt-max-rot", "flt-max-tpsa", "flt-max-hbd", "flt-max-hba", "flt-reactivity"]
     .forEach((id) => { const el = document.getElementById(id); el.addEventListener("change", sync); el.addEventListener("input", renderReview); });
 

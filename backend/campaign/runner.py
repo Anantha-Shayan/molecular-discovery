@@ -638,6 +638,8 @@ def _remote(p: dict, stage: str) -> bool:
 
 def _batch_timeout(p: dict, stage: str) -> int:
     # HPSee enforces its own workflow deadline (hpsee_flow.wait); the batch watchdog sits just above it.
+    if stage == "affinity":
+        return settings.koffee_timeout_seconds
     return settings.hpsee_workflow_timeout_seconds + 300 if _remote(p, stage) else settings.batch_timeout_seconds
 
 
@@ -659,6 +661,9 @@ def _tool_label(p: dict, stage: str) -> str | None:
     if stage == "admet":
         from ..science import admet
         return admet.MODEL_NAME
+    if stage == "affinity":
+        from ..science.engines.koffee import KoffeeEngine
+        return KoffeeEngine.version
     return "mocked placeholder" if P.STAGES[stage]["mocked"] else None
 
 
@@ -768,6 +773,21 @@ def _persist_outcomes(job_id: str, stage: str, batch_id: str, mol_ids: list[str]
             s.add(models.StageResult(
                 molecule_id=o.molecule_id, job_id=job_id, stage=stage, payload=o.payload,
                 is_mocked=mocked, status="succeeded" if o.ok else "failed", error=o.error, batch_id=batch_id))
+        if stage == "affinity":
+            output_artifacts = {
+                (o.payload.get("input_archive_path"), "koffee_input_tar") for o in outcomes if o.ok and o.payload.get("input_archive_path")
+            } | {
+                (o.payload.get("results_tsv_path"), "koffee_results_tsv") for o in outcomes if o.ok and o.payload.get("results_tsv_path")
+            }
+            for rel, kind in output_artifacts:
+                try:
+                    path = storage.resolve(rel)
+                except storage.StoragePathError:
+                    continue
+                if path.exists() and not s.execute(select(models.Artifact.id).where(
+                    models.Artifact.job_id == job_id, models.Artifact.stage == stage,
+                    models.Artifact.storage_path == storage.to_stored(path))).scalar_one_or_none():
+                    _artifact(s, job_id, stage, path, kind)
         b = s.get(models.Batch, batch_id)
         b.ok_count, b.failed_count = sum(o.ok for o in outcomes), sum(not o.ok for o in outcomes)
         b.status, b.error, b.seconds, b.finished_at = "succeeded", None, round(seconds, 2), _now()

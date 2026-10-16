@@ -81,12 +81,16 @@ def run(
     env: dict[str, str] | None = None,
     cancel_event: threading.Event | None = None,
     check: bool = True,
+    display_argv: list[str] | None = None,
 ) -> ProcResult:
     """Run `argv`, logging output to `log_path`. Raises ToolError on failure."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     with log_path.open("ab") as out:
-        out.write(f"$ {' '.join(argv)}\n".encode())
+        # Some safe argv values are still operationally sensitive host paths
+        # (for example a commercial license bind mount).  Run the real argv,
+        # but permit adapters to write a redacted representation to artifacts.
+        out.write(f"$ {' '.join(display_argv or argv)}\n".encode())
         out.flush()
         proc = subprocess.Popen(  # noqa: S603 — argv list, no shell
             argv,

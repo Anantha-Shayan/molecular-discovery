@@ -16,12 +16,15 @@ import threading
 from pathlib import Path
 from typing import Callable
 
-from ..services import TargetContext, affinity_service, kinetics_service
+from ..services import TargetContext, kinetics_service
+from .. import storage
+from ..config import settings
 from ..science import admet as admet_model
 from ..science.engines import flexx as flexx_engine
 from ..science.engines import vina as vina_engine
 from ..science.engines.common import DockInput, DockSettings
 from ..science.engines.hyde import HydeEngine, clash_label
+from ..science.engines.koffee import KoffeeEngine, KoffeeInput, KoffeeInputError
 from ..stages import sa_scoring
 from ..tools import proc
 
@@ -194,12 +197,60 @@ def run_admet(ctx: Ctx, mols: list[MolRef], *_a, progress: Progress, **_k) -> li
     return out
 
 
-def run_affinity(ctx: Ctx, mols: list[MolRef], *_a, progress: Progress, **_k) -> list[MolOutcome]:
-    out = [
-        MolOutcome(m.id, True, {**affinity_service.run(ctx.target, m.smiles), "mocked": True})
-        for m in mols
-    ]
-    progress(len(out), 0)
+def run_affinity(ctx: Ctx, mols: list[MolRef], batch_dir: Path, log_path: Path,
+                 cancel: threading.Event, progress: Progress, timeout: float) -> list[MolOutcome]:
+    """Score existing successful docked poses; Koffee never receives generated conformers."""
+    prep = ctx.job_dir / "prepare"
+    # Vina's protonated PDBFixer product is the only local protein artifact that
+    # can meet Koffee's explicit-hydrogen requirement.  Other engines remain
+    # eligible only when their prepared protein actually contains hydrogens.
+    protein = prep / "receptor_H.pdb"
+    if not protein.exists():
+        protein = prep / "protein.pdb"
+    eligible: list[KoffeeInput] = []
+    prefailed: dict[str, str] = {}
+    for m in mols:
+        rel = ctx.prior.get(m.id, {}).get("docking", {}).get("pose_path")
+        if not rel:
+            prefailed[m.id] = "Koffee requires a completed docked ligand pose."
+            continue
+        pose = ctx.job_dir / rel
+        if not pose.is_file():
+            prefailed[m.id] = "The completed docked pose artifact is missing."
+            continue
+        eligible.append(KoffeeInput(m.id, m.display_id, pose))
+    if not eligible:
+        out = [MolOutcome(m.id, False, error=prefailed.get(m.id, "No eligible docked pose.")) for m in mols]
+        progress(0, len(out))
+        return out
+    try:
+        scored, missing, archive, results_path = KoffeeEngine().run(
+            protein=protein, inputs=eligible,
+            workdir=settings.koffee_work_dir / ctx.job_id / (ctx.batch_id or "unbatched"), log_path=log_path,
+            cpus=ctx.cpu, timeout=timeout, cancel_event=cancel,
+        )
+    except KoffeeInputError as exc:
+        out = [MolOutcome(m.id, False, error=str(exc)) for m in mols]
+        progress(0, len(out))
+        return out
+    out: list[MolOutcome] = []
+    for m in mols:
+        if m.id in prefailed:
+            out.append(MolOutcome(m.id, False, error=prefailed[m.id]))
+        elif m.id in missing:
+            out.append(MolOutcome(m.id, False, error="Koffee produced no results.tsv row for this ligand."))
+        else:
+            r = scored[m.id]
+            out.append(MolOutcome(m.id, True, {
+                "engine": KoffeeEngine.key, "engine_version": KoffeeEngine.version,
+                "score_kcal_mol": r.score_kcal_mol, "ligand_strain_kcal_mol": r.ligand_strain_kcal_mol,
+                "strain_included_in_score": ctx.params["koffee_ligand_strain_in_score"],
+                "system_id": r.system_id,
+                "input_archive_path": storage.to_stored(archive),
+                "results_tsv_path": storage.to_stored(results_path),
+                "protein_path": protein.relative_to(ctx.job_dir).as_posix(),
+            }))
+    progress(sum(x.ok for x in out), sum(not x.ok for x in out))
     return out
 
 
@@ -224,6 +275,6 @@ EXECUTORS = {
 
 def call(stage: str, ctx: Ctx, mols, batch_dir, log_path, cancel, progress, timeout):
     fn = EXECUTORS[stage]
-    if stage in ("docking", "hyde"):
+    if stage in ("docking", "hyde", "affinity"):
         return fn(ctx, mols, batch_dir, log_path, cancel, progress, timeout)
     return fn(ctx, mols, progress=progress)

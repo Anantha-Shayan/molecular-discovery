@@ -131,9 +131,9 @@ def test_happy_path_persists_every_stage_and_batch(client, fake):
     keys = [s["key"] for s in d["stages"]]
     assert keys == ["prepare", "library", "docking", "hyde", "sa", "admet", "affinity", "kinetics", "rank", "grow"]
     st = {s["key"]: s for s in d["stages"]}
-    assert st["admet"]["status"] == "skipped" and st["grow"]["status"] == "skipped"
+    assert st["admet"]["status"] == "skipped" and st["affinity"]["status"] == "skipped" and st["grow"]["status"] == "skipped"
     assert st["docking"]["batches"]["total"] == 3 and st["docking"]["batches"]["succeeded"] == 3
-    assert st["affinity"]["mocked"] and st["kinetics"]["mocked"] and not st["docking"]["mocked"]
+    assert not st["affinity"]["mocked"] and st["kinetics"]["mocked"] and not st["docking"]["mocked"]
     cands = client.get(f"/api/jobs/{job}/candidates").json()
     assert cands["candidates"] and not cands["provisional"]
     scores = [c["hyde_cumulative_kj_mol"] for c in cands["candidates"]]

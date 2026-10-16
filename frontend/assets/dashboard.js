@@ -224,7 +224,7 @@ function candRow(c) {
     <td class="p-space-sm text-right">${num(c.sa_score, 1)}</td>
     <td class="p-space-sm">${c.admet_profile ? chip(c.admet_profile === "Favorable" ? "succeeded" : c.admet_profile === "Moderate" ? "retrying" : "failed", c.admet_profile) : "—"}
       ${c.admet_tox_flags ? `<div class="text-error">${esc(c.admet_tox_flags)}</div>` : ""}</td>
-    <td class="p-space-sm text-outline text-right" title="Placeholder values — Koffee not connected">${c.affinity_kd_nm_MOCKED === null ? "—" : num(c.affinity_kd_nm_MOCKED, 1) + " nM*"}<div>${c.residence_time_min_MOCKED === null ? "" : num(c.residence_time_min_MOCKED, 0) + " min*"}</div></td></tr>`;
+    <td class="p-space-sm text-right" title="Koffee model prediction; more negative scores indicate stronger predicted binding within a comparable series.">${c.koffee_score_kcal_mol == null ? "—" : num(c.koffee_score_kcal_mol, 2) + " kcal/mol"}<div class="text-outline">${c.koffee_ligand_strain_kcal_mol == null ? "" : "strain " + num(c.koffee_ligand_strain_kcal_mol, 2)}</div></td></tr>`;
 }
 
 async function renderResults() {
@@ -263,9 +263,9 @@ async function renderResults() {
       <th class="p-space-sm text-right" title="Predicted fit in the pocket by the docking program. Not comparable between programs.">Docking score</th>
       <th class="p-space-sm text-right" title="HYDE total binding-energy estimate, and its estimated affinity range">HYDE</th>
       <th class="p-space-sm text-right" title="1 easy to make … 10 very hard">SA score</th><th class="p-space-sm">ADMET</th>
-      <th class="p-space-sm text-right" title="Placeholders">Koffee*</th></tr></thead>
+      <th class="p-space-sm text-right" title="Koffee predicted binding-affinity score. More negative is stronger within a comparable series; not an experimental affinity.">Koffee</th></tr></thead>
       <tbody class="divide-y divide-surface-container-high/60">${rows.map(candRow).join("")}</tbody></table>
-      <p class="p-space-md font-mono-sm text-mono-sm text-outline">* Placeholder values; the Koffee tools are not connected. They do not affect the ranking. Click a row for details.</p>`;
+      <p class="p-space-md font-mono-sm text-mono-sm text-outline">Koffee is a separate model prediction from completed docked poses. More-negative scores indicate stronger predicted binding within a comparable set; they do not affect the ranking. Click a row for details.</p>`;
   } else {
     const d = await API.molecules(jobId, S.tab);
     host.innerHTML = d.molecules.length ? `<table class="w-full text-left font-mono-data text-mono-data"><thead><tr class="font-label-caps text-label-caps text-outline uppercase bg-surface-container-low/60">
@@ -354,9 +354,9 @@ async function openCandidate(id) {
     ${ad.values ? `<section><h3 class="font-headline-sm text-headline-sm">ADMET ${real(false)}</h3>
       <p class="font-body-sm text-body-sm text-on-surface-variant">Predictions from the ${esc(ad.model)}. Values marked as probabilities are model confidence that the property is present, trained on public datasets. They carry real uncertainty and are not lab results.</p>
       <div class="mt-space-xs font-mono-data text-mono-data">${admetHTML}</div></section>` : ""}
-    <section><h3 class="font-headline-sm text-headline-sm">Placeholders</h3>
-      <p class="font-body-sm text-body-sm text-on-surface-variant">Binding affinity (Kd) and unbinding kinetics (koff, residence time) come from the Koffee tools, which are not connected yet. The numbers below are placeholders.</p>
-      <div class="mt-space-xs font-mono-data text-mono-data opacity-70">${kv("Kd", sp.affinity ? sp.affinity.kd_nm + " nM*" : "—")}${kv("Residence time", sp.kinetics ? sp.kinetics.residence_time_min + " min*" : "—")}</div></section>
+    ${sp.affinity ? `<section><h3 class="font-headline-sm text-headline-sm">Koffee Binding Affinity ${real(false)}</h3>
+      <p class="font-body-sm text-body-sm text-on-surface-variant">A Koffee model prediction based on the completed docked pose. More-negative scores indicate stronger predicted binding within an appropriate comparison set; this is not an experimental affinity.</p>
+      <div class="mt-space-xs font-mono-data text-mono-data">${kv("Predicted score", sp.affinity.score_kcal_mol + " kcal/mol")}${kv("Ligand strain", sp.affinity.ligand_strain_kcal_mol == null ? "—" : sp.affinity.ligand_strain_kcal_mol + " kcal/mol")}${kv("Strain included", sp.affinity.strain_included_in_score ? "yes" : "no")}</div></section>` : ""}
     <section><h3 class="font-headline-sm text-headline-sm">How this molecule got here</h3>
       <ol class="mt-space-xs space-y-space-2xs font-body-sm">${m.provenance.map((p) => `<li class="flex items-center gap-space-xs">${p.error ? '<span class="material-symbols-outlined text-error text-[16px]">cancel</span>' : p.has_result ? '<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>' : '<span class="material-symbols-outlined text-outline text-[16px]">remove_circle_outline</span>'}
         <span>${esc(p.label)}</span> ${real(p.mocked)} <span class="text-outline font-mono-sm">${esc(p.tool || "")}</span>${p.error ? `<span class="text-error"> — ${esc(p.error)}</span>` : ""}</li>`).join("")}</ol></section>`;

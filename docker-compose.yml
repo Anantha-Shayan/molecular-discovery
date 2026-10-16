@@ -83,6 +83,9 @@ services:
       VINA_BIN: /usr/local/bin/vina
       TOOLS_DIR: /opt/molecular-tools
       BIOSOLVE_LICENSE_FILE: /etc/biosolveit
+      # Koffee license is separate from the BioSolveIT license. The host
+      # directory is mounted below; keep the vendor file outside the image.
+      KOFFEE_LICENSE_FILE: /etc/kvantify/${KOFFEE_LICENSE_FILENAME:-license.txt}
       # Workflow limits — tune to the machine (see each override for its default).
       CPU_BUDGET: ${CPU_BUDGET:-4}
       MAX_PARALLEL_BATCHES: ${MAX_PARALLEL_BATCHES:-1}
@@ -97,6 +100,7 @@ services:
       # `z` relabels for SELinux hosts and is ignored elsewhere; set MOUNT_OPTS=ro if you must not relabel.
       - ${TOOLS_HOST_DIR:-${HOME}/.local/share/molecular-tools}:/opt/molecular-tools:${MOUNT_OPTS:-ro,z}
       - ${LICENSE_HOST_DIR:-${HOME}/.config/biosolveit}:/etc/biosolveit:${MOUNT_OPTS:-ro,z}
+      - ${KOFFEE_LICENSE_HOST_DIR:-${HOME}/.config/kvantify}:/etc/kvantify:${MOUNT_OPTS:-ro,z}
     networks:
       - molecular-discovery-network
     # Lets the container reach services published on the Docker host (e.g. HPSee's port 8080).

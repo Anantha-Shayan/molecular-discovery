@@ -125,6 +125,16 @@ class Settings:
     # Directory (or file) holding the BioSolveIT .lic. Only the PATH is ever
     # configured here; the license contents are never read, logged or served.
     biosolve_license_file: str | None
+    # --- Kvantify Koffee Binding Affinity (Docker, optional) ---
+    koffee_docker_bin: str
+    koffee_image: str
+    koffee_license_file: Path | None
+    koffee_work_dir: Path
+    koffee_timeout_seconds: int
+    koffee_optimization_level: int
+    koffee_system_pre_optimization: bool
+    koffee_ligand_strain_in_score: bool
+    koffee_protein_preparation_mode: str
     # --- workflow execution limits
     batch_size: int
     max_parallel_batches: int
@@ -222,6 +232,13 @@ def load_settings() -> Settings:
     if app_env == "production" and "*" in cors_origins:
         raise ConfigError("CORS_ORIGINS='*' is not allowed when APP_ENV=production")
 
+    koffee_mode = _str("KOFFEE_PROTEIN_PREPARATION_MODE") or "remove_non_protein"
+    if koffee_mode not in ("disable_all", "remove_non_protein", "remove_non_protein_non_water", "enable_all"):
+        raise ConfigError("KOFFEE_PROTEIN_PREPARATION_MODE is not supported by Koffee Binding Affinity v0.9.4")
+    koffee_work_dir = _path("KOFFEE_WORK_DIR") or (data_dir / "koffee")
+    if koffee_work_dir != data_dir and data_dir not in koffee_work_dir.parents:
+        raise ConfigError("KOFFEE_WORK_DIR must be inside DATA_DIR so input and output artifacts remain durable and downloadable")
+
     return Settings(
         app_env=app_env,
         database_url=database_url,
@@ -248,6 +265,15 @@ def load_settings() -> Settings:
         fastgrow_db=_str("FASTGROW_DB"),
         biosolve_license_file=_str("BIOSOLVE_LICENSE_FILE")
         or (str(DEFAULT_LICENSE_DIR) if DEFAULT_LICENSE_DIR.is_dir() else None),
+        koffee_docker_bin=_str("KOFFEE_DOCKER_BIN") or "docker",
+        koffee_image=_str("KOFFEE_IMAGE") or "koffee-binding-affinity:latest",
+        koffee_license_file=_path("KOFFEE_LICENSE_FILE"),
+        koffee_work_dir=koffee_work_dir,
+        koffee_timeout_seconds=max(60, _int("KOFFEE_TIMEOUT_SECONDS", 7200)),
+        koffee_optimization_level=max(0, min(5, _int("KOFFEE_OPTIMIZATION_LEVEL", 1))),
+        koffee_system_pre_optimization=_bool("KOFFEE_SYSTEM_PRE_OPTIMIZATION", True),
+        koffee_ligand_strain_in_score=_bool("KOFFEE_LIGAND_STRAIN_IN_SCORE", False),
+        koffee_protein_preparation_mode=koffee_mode,
         batch_size=max(1, _int("BATCH_SIZE", 10)),
         max_parallel_batches=max(1, _int("MAX_PARALLEL_BATCHES", 2)),
         cpu_budget=max(1, _int("CPU_BUDGET", max(1, (os.cpu_count() or 4) // 2))),

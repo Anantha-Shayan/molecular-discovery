@@ -24,8 +24,8 @@ STAGES: dict[str, dict] = {
                blurb="Estimate how easy each molecule is to make (RDKit SAscore)."),
     "admet": dict(label="ADMET prediction", batched=True, mocked=False,
                   blurb="Predict absorption, metabolism and toxicity (ADMET-AI)."),
-    "affinity": dict(label="Binding affinity", batched=True, mocked=True,
-                     blurb="Placeholder: Koffee binding-affinity integration is pending."),
+    "affinity": dict(label="Koffee Binding Affinity", batched=True, mocked=False,
+                     blurb="Predict binding affinity from completed docked protein–ligand poses (Kvantify Koffee)."),
     "kinetics": dict(label="Unbinding kinetics", batched=True, mocked=True,
                      blurb="Placeholder: Koffee unbinding-kinetics integration is pending."),
     "csd_anchoring": dict(label="Chemical space anchoring", batched=False, mocked=False,
@@ -69,7 +69,8 @@ DEFAULTS = {
     "sa_threshold": 5.0,
     "enable_admet": True,
     "strict_admet_gate": True,
-    "enable_affinity": True,       # mocked, annotation only
+    "enable_affinity": False,
+    "koffee_ligand_strain_in_score": settings.koffee_ligand_strain_in_score,
     "enable_kinetics": True,       # mocked, annotation only
     "rank_by": "hyde",
     "enable_grow": False,          # optional: FastGrow analogues of the top candidates
@@ -140,7 +141,7 @@ def resolve(params: dict | None) -> dict:
     p["sa_threshold"] = float(p["sa_threshold"])
     if not 1.0 <= p["sa_threshold"] <= 10.0:
         raise ParamError("sa_threshold must be between 1 and 10")
-    for flag in ("enable_hyde", "enable_admet", "strict_admet_gate", "enable_affinity", "enable_kinetics"):
+    for flag in ("enable_hyde", "enable_admet", "strict_admet_gate", "enable_affinity", "enable_kinetics", "koffee_ligand_strain_in_score"):
         p[flag] = bool(p[flag])
     p["enable_grow"] = bool(p["enable_grow"])
     p["grow_parents"] = max(1, min(10, int(p["grow_parents"])))
@@ -206,5 +207,5 @@ def rank_policy_text(p: dict) -> str:
     }[p["rank_by"]]
     return (
         f"Candidates must pass every enabled filter. Ranked by {primary}; ties broken by lower "
-        "SA score. No scores are combined; mocked stages never affect filtering or ranking."
+        "SA score. No scores are combined; Koffee is displayed separately and never affects filtering or ranking."
     )

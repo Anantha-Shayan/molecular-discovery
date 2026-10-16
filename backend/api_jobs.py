@@ -47,7 +47,12 @@ def tools():
     st = {k: v.public() for k, v in registry.tool_statuses().items()}
     return {
         "tools": st,
-        "services": {"hpsee": hpsee_api.status().public()},
+        "services": {"hpsee": hpsee_api.status().public(), "koffee": {
+            "available": bool(settings.koffee_license_file and settings.koffee_license_file.is_file()),
+            "image": settings.koffee_image,
+            "reason": None if settings.koffee_license_file and settings.koffee_license_file.is_file()
+            else "Set KOFFEE_LICENSE_FILE to a readable Kvantify license file.",
+        }},
         "models": [
             {"key": "admet", "name": admet_model.MODEL_NAME, "available": True},
             {
@@ -60,7 +65,6 @@ def tools():
             },
         ],
         "mocked": [
-            {"key": "affinity", "name": "Binding affinity (Koffee)", "reason": "Koffee integration pending; placeholder values only."},
             {"key": "kinetics", "name": "Unbinding kinetics (Koffee)", "reason": "Koffee integration pending; placeholder values only."},
         ],
         "limits": {"max_library": P.MAX_LIBRARY, "batch_size": settings.batch_size,
@@ -154,6 +158,8 @@ def _check_engine(req: schemas.CreateJobRequest, params: dict) -> str:
     """Refuse up front what cannot run here; returns a short engine label for the campaign name."""
     if req.engine not in P.ENGINES:
         raise P.ParamError(f"Unknown docking engine '{req.engine}'. Choose one of: {', '.join(P.ENGINES)}.")
+    if req.enable_affinity and (settings.koffee_license_file is None or not settings.koffee_license_file.is_file()):
+        raise P.ParamError("Koffee Binding Affinity is enabled but KOFFEE_LICENSE_FILE is not configured to a readable license file.")
     if req.engine == "vina":
         tool = registry.get("vina")
         if not tool.available:
@@ -293,6 +299,8 @@ def batch_log(job_id: str, batch_id: str, tail_kb: int = Query(32, ge=1, le=256)
             text = fh.read().decode("utf-8", errors="replace")
         # Never leak the host layout through logs.
         text = text.replace(str(settings.data_dir), "<data>")
+        if settings.koffee_license_file:
+            text = text.replace(str(settings.koffee_license_file.parent), "<koffee-license>")
         return Response(text, media_type="text/plain; charset=utf-8")
 
 

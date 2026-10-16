@@ -97,7 +97,8 @@ class CreateJobRequest(BaseModel):
     sa_threshold: float = 5.0
     enable_admet: bool = True
     strict_admet_gate: bool = True
-    enable_affinity: bool = True
+    enable_affinity: bool = False
+    koffee_ligand_strain_in_score: bool = False
     enable_kinetics: bool = True
     rank_by: str = "hyde"
     enable_grow: bool = False
